@@ -9,12 +9,23 @@ export const members = sqliteTable("members", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
+// Single-row table (id is always "1"): the GitHub App identity for this instance,
+// populated either via the in-dashboard manifest flow or by hand in .env as a fallback.
+export const githubAppConfig = sqliteTable("github_app_config", {
+  id: text("id").primaryKey(),
+  appId: integer("app_id").notNull(),
+  slug: text("slug").notNull(),
+  clientId: text("client_id").notNull(),
+  clientSecret: text("client_secret").notNull(),
+  webhookSecret: text("webhook_secret").notNull(),
+  privateKey: text("private_key").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
 export const invites = sqliteTable("invites", {
   id: text("id").primaryKey(),
-  email: text("email").notNull(),
-  token: text("token").notNull().unique(),
+  email: text("email").notNull().unique(),
   invitedBy: text("invited_by").notNull().references(() => members.id),
-  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
   redeemedAt: integer("redeemed_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });

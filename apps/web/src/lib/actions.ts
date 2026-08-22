@@ -1,0 +1,183 @@
+"use server";
+
+import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { and, eq } from "drizzle-orm";
+import { db, schema } from "@doctor/db";
+import { requireOrgAdmin, requireSession } from "@/lib/session";
+import { hasProjectRole } from "@/lib/permissions";
+
+function slugify(name: string) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export async function inviteMember(formData: FormData) {
+  const session = await requireOrgAdmin();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email) throw new Error("Email is required.");
+
+  const alreadyMember = db.select().from(schema.members).where(eq(schema.members.email, email)).get();
+  if (alreadyMember) throw new Error("This person is already a member.");
+
+  db.insert(schema.invites)
+    .values({
+      id: randomUUID(),
+      email,
+      invitedBy: session.user.id,
+      createdAt: new Date(),
+    })
+    .onConflictDoNothing()
+    .run();
+
+  revalidatePath("/dashboard/members");
+}
+
+export async function removeMember(formData: FormData) {
+  const session = await requireOrgAdmin();
+  const memberId = String(formData.get("memberId") ?? "");
+  if (memberId === session.user.id) throw new Error("You can't remove yourself.");
+  db.delete(schema.members).where(eq(schema.members.id, memberId)).run();
+  revalidatePath("/dashboard/members");
+}
+
+export async function createProject(formData: FormData) {
+  const session = await requireSession();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Project name is required.");
+
+  const slug = slugify(name);
+  if (!slug) throw new Error("Project name must contain letters or numbers.");
+
+  const existing = db.select().from(schema.projects).where(eq(schema.projects.slug, slug)).get();
+  if (existing) throw new Error("A project with this name already exists.");
+
+  const projectId = randomUUID();
+  const now = new Date();
+
+  db.insert(schema.projects)
+    .values({
+      id: projectId,
+      name,
+      slug,
+      branch: "main",
+      docsPath: "docs",
+      createdBy: session.user.id,
+      createdAt: now,
+    })
+    .run();
+
+  db.insert(schema.projectMembers)
+    .values({
+      id: randomUUID(),
+      projectId,
+      memberId: session.user.id,
+      role: "owner",
+      createdAt: now,
+    })
+    .run();
+
+  redirect(`/dashboard/projects/${slug}`);
+}
+
+export async function addProjectMember(projectId: string, formData: FormData) {
+  const session = await requireSession();
+  if (!hasProjectRole(session.user.id, projectId, "owner", session.user.isOrgAdmin)) {
+    throw new Error("Only project owners can add members.");
+  }
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const role = String(formData.get("role") ?? "viewer") as "owner" | "editor" | "viewer";
+
+  const member = db.select().from(schema.members).where(eq(schema.members.email, email)).get();
+  if (!member) throw new Error("No org member found with that email. Invite them to the org first.");
+
+  const existing = db
+    .select()
+    .from(schema.projectMembers)
+    .where(and(eq(schema.projectMembers.projectId, projectId), eq(schema.projectMembers.memberId, member.id)))
+    .get();
+  if (existing) throw new Error("Already a member of this project.");
+
+  db.insert(schema.projectMembers)
+    .values({
+      id: randomUUID(),
+      projectId,
+      memberId: member.id,
+      role,
+      createdAt: new Date(),
+    })
+    .run();
+
+  revalidatePath(`/dashboard/projects`);
+}
+
+export async function removeProjectMember(projectId: string, memberId: string) {
+  const session = await requireSession();
+  if (!hasProjectRole(session.user.id, projectId, "owner", session.user.isOrgAdmin)) {
+    throw new Error("Only project owners can remove members.");
+  }
+  db.delete(schema.projectMembers)
+    .where(and(eq(schema.projectMembers.projectId, projectId), eq(schema.projectMembers.memberId, memberId)))
+    .run();
+  revalidatePath(`/dashboard/projects`);
+}
+
+export async function updateProjectSettings(projectId: string, formData: FormData) {
+  const session = await requireSession();
+  if (!hasProjectRole(session.user.id, projectId, "editor", session.user.isOrgAdmin)) {
+    throw new Error("You don't have permission to edit this project.");
+  }
+
+  const branch = String(formData.get("branch") ?? "main").trim() || "main";
+  const docsPath = String(formData.get("docsPath") ?? "docs").trim() || "docs";
+
+  db.update(schema.projects).set({ branch, docsPath }).where(eq(schema.projects.id, projectId)).run();
+  revalidatePath(`/dashboard/projects`);
+}
+
+export async function selectProjectRepo(projectId: string, formData: FormData) {
+  const session = await requireSession();
+  if (!hasProjectRole(session.user.id, projectId, "owner", session.user.isOrgAdmin)) {
+    throw new Error("Only project owners can set the connected repository.");
+  }
+
+  const repoFullName = String(formData.get("repoFullName") ?? "");
+  if (!repoFullName) throw new Error("Pick a repository.");
+
+  db.update(schema.projects).set({ repoFullName }).where(eq(schema.projects.id, projectId)).run();
+
+  const project = db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).get();
+  redirect(`/dashboard/projects/${project?.slug}`);
+}
+
+export async function triggerBuild(projectId: string) {
+  const session = await requireSession();
+  if (!hasProjectRole(session.user.id, projectId, "editor", session.user.isOrgAdmin)) {
+    throw new Error("You don't have permission to trigger a build.");
+  }
+
+  const installation = db
+    .select()
+    .from(schema.githubInstallations)
+    .where(eq(schema.githubInstallations.projectId, projectId))
+    .get();
+  if (!installation) throw new Error("Connect a GitHub repository before building.");
+
+  db.insert(schema.builds)
+    .values({
+      id: randomUUID(),
+      projectId,
+      commitSha: "HEAD",
+      status: "queued",
+      triggeredBy: session.user.id,
+      createdAt: new Date(),
+    })
+    .run();
+
+  revalidatePath(`/dashboard/projects`);
+}

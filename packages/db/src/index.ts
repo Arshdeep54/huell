@@ -1,2 +1,3 @@
-export { db } from "./client.js";
-export * as schema from "./schema.js";
+export { db } from "./client";
+export * as schema from "./schema";
+export type { ProjectRole, BuildStatus } from "./schema";

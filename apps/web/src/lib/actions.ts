@@ -1,12 +1,17 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
+import path from "node:path";
+import AdmZip from "adm-zip";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@doctor/db";
 import { requireOrgAdmin, requireSession } from "@/lib/session";
 import { hasProjectRole } from "@/lib/permissions";
+
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 function slugify(name: string) {
   return name
@@ -173,6 +178,60 @@ export async function triggerBuild(projectId: string) {
       id: randomUUID(),
       projectId,
       commitSha: "HEAD",
+      status: "queued",
+      triggeredBy: session.user.id,
+      createdAt: new Date(),
+    })
+    .run();
+
+  revalidatePath(`/dashboard/projects`);
+}
+
+export async function uploadDocsZip(projectId: string, formData: FormData) {
+  const session = await requireSession();
+  if (!hasProjectRole(session.user.id, projectId, "editor", session.user.isOrgAdmin)) {
+    throw new Error("You don't have permission to upload docs for this project.");
+  }
+
+  const file = formData.get("docsZip");
+  if (!(file instanceof File) || file.size === 0) throw new Error("Choose a .zip file.");
+  if (!file.name.toLowerCase().endsWith(".zip")) throw new Error("File must be a .zip archive.");
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error("Archive is too large (20MB limit).");
+
+  const dataDir = process.env.DATA_DIR ?? "./data";
+  const buildId = randomUUID();
+  const extractDir = path.join(dataDir, "uploads", buildId);
+  mkdirSync(extractDir, { recursive: true });
+
+  const zip = new AdmZip(Buffer.from(await file.arrayBuffer()));
+  zip.extractAllTo(extractDir, true);
+
+  // A zip created from a folder often wraps everything in one top-level
+  // directory (e.g. "docs/"). Flatten it so docs.json ends up at extractDir's root.
+  if (!existsSync(path.join(extractDir, "docs.json"))) {
+    const { readdirSync, renameSync } = await import("node:fs");
+    const entries = readdirSync(extractDir, { withFileTypes: true });
+    const onlyDir = entries.length === 1 && entries[0].isDirectory() ? entries[0].name : null;
+    const wrapped = onlyDir ? path.join(extractDir, onlyDir) : null;
+    if (wrapped && existsSync(path.join(wrapped, "docs.json"))) {
+      for (const entry of readdirSync(wrapped)) {
+        renameSync(path.join(wrapped, entry), path.join(extractDir, entry));
+      }
+      rmSync(wrapped, { recursive: true, force: true });
+    }
+  }
+
+  if (!existsSync(path.join(extractDir, "docs.json"))) {
+    rmSync(extractDir, { recursive: true, force: true });
+    throw new Error("Archive doesn't contain a docs.json at its root.");
+  }
+
+  db.insert(schema.builds)
+    .values({
+      id: buildId,
+      projectId,
+      source: "upload",
+      commitSha: `upload-${new Date().toISOString().slice(0, 19)}`,
       status: "queued",
       triggeredBy: session.user.id,
       createdAt: new Date(),

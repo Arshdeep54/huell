@@ -1,0 +1,20 @@
+---
+// Mintlify renders each child code fence as a switchable tab. We render them
+// stacked instead — simpler and doesn't need to intercept expressive-code's
+// output — until a real tabbed version is worth building.
+---
+
+<div class="doc-code-group">
+	<slot />
+</div>
+
+<style>
+	.doc-code-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.doc-code-group :global(figure.expressive-code) {
+		margin: 0;
+	}
+</style>

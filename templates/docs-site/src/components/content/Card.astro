@@ -1,0 +1,43 @@
+---
+import { Card as StarlightCard } from '@astrojs/starlight/components';
+
+interface Props {
+	title: string;
+	icon?: string;
+	href?: string;
+}
+
+const { title, icon, href } = Astro.props as Props;
+
+// Starlight's icon set is small (nav/UI glyphs, not brand icons) and silently
+// renders an empty — but still boxed — icon for any name outside it. Mintlify's
+// icon vocabulary (docker, rust, rocket, ...) mostly falls outside that set, so
+// only pass one through when it's actually going to draw something.
+const STARLIGHT_ICONS = new Set([
+	'add-document', 'approve-check', 'approve-check-circle', 'cloud-download',
+	'code-branch', 'comment-alt', 'down-arrow', 'down-caret', 'forward-slash',
+	'left-arrow', 'left-caret', 'link-alt', 'list-format', 'mobile-android',
+	'open-book', 'question-circle', 'right-arrow', 'right-caret', 'up-arrow', 'up-caret',
+]);
+const resolvedIcon = icon && STARLIGHT_ICONS.has(icon) ? icon : undefined;
+---
+
+{href ? (
+	<a href={href} class="doc-card-link">
+		<StarlightCard title={title} icon={resolvedIcon as any}>
+			<slot />
+		</StarlightCard>
+	</a>
+) : (
+	<StarlightCard title={title} icon={resolvedIcon as any}>
+		<slot />
+	</StarlightCard>
+)}
+
+<style>
+	.doc-card-link {
+		display: block;
+		text-decoration: none;
+		color: inherit;
+	}
+</style>

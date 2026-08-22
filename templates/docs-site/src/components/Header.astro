@@ -8,8 +8,8 @@ import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
 import nav from '../../nav.config.json';
 
 const currentPath = Astro.url.pathname.replace(/^\/|\/$/g, '');
-const isActiveTab = (slug) => currentPath === slug || currentPath.startsWith(`${slug}/`);
-const firstPage = (tab) => `${tab.slug}/${tab.groups[0]?.pages[0] ?? ''}`;
+const isActiveTab = (tab) => tab.groups.some((group) => group.pages.includes(currentPath));
+const firstPage = (tab) => tab.groups[0]?.pages[0] ?? '';
 
 const shouldRenderSearch =
 	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
@@ -23,7 +23,7 @@ const shouldRenderSearch =
 		nav.tabs.length > 1 && (
 			<nav class="doctor-tabs sl-hidden md:sl-flex" aria-label="Sections">
 				{nav.tabs.map((tab) => (
-					<a href={`/${firstPage(tab)}/`} aria-current={isActiveTab(tab.slug) ? 'page' : undefined}>
+					<a href={`/${firstPage(tab)}/`} aria-current={isActiveTab(tab) ? 'page' : undefined}>
 						{tab.label}
 					</a>
 				))}
@@ -34,11 +34,27 @@ const shouldRenderSearch =
 		{shouldRenderSearch && <Search />}
 	</div>
 	<div class="sl-hidden md:sl-flex print:hidden right-group">
+		{
+			nav.navLinks?.length > 0 && (
+				<div class="doctor-nav-links">
+					{nav.navLinks.map((link) => (
+						<a href={link.href}>{link.label}</a>
+					))}
+				</div>
+			)
+		}
 		<div class="sl-flex social-icons">
 			<SocialIcons />
 		</div>
 		<ThemeSelect />
 		<LanguageSelect />
+		{
+			nav.navPrimary && (
+				<a class="doctor-nav-primary" href={nav.navPrimary.href}>
+					{nav.navPrimary.label}
+				</a>
+			)
+		}
 	</div>
 </div>
 
@@ -91,5 +107,40 @@ const shouldRenderSearch =
 	.doctor-tabs a[aria-current='page'] {
 		background: var(--sl-color-accent);
 		color: var(--sl-color-white);
+	}
+
+	.doctor-nav-links {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+	}
+	.doctor-nav-links a {
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: var(--sl-color-gray-2);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.doctor-nav-links a:hover {
+		color: var(--sl-color-white);
+	}
+
+	.doctor-nav-primary {
+		display: inline-flex;
+		align-items: center;
+		height: 2rem;
+		padding: 0 0.9rem;
+		border-radius: 999px;
+		background: var(--sl-color-accent);
+		color: var(--sl-color-black);
+		font-size: 0.85rem;
+		font-weight: 600;
+		text-decoration: none;
+		white-space: nowrap;
+		transition: opacity 150ms ease;
+	}
+	.doctor-nav-primary:hover {
+		opacity: 0.85;
+		color: var(--sl-color-black);
 	}
 </style>

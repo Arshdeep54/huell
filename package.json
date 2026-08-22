@@ -1,0 +1,13 @@
+{
+  "name": "doctor",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @doctor/web dev",
+    "build:web": "pnpm --filter @doctor/web build",
+    "db:migrate": "pnpm --filter @doctor/db migrate",
+    "worker": "pnpm --filter @doctor/builder start"
+  }
+}

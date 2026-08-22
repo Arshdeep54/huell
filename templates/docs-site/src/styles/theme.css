@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+	--sl-font: 'Inter', ui-sans-serif, system-ui, sans-serif;
+	--sl-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+	--sl-color-accent-low: #e3e4fb;
+	--sl-color-accent: #5b5bf0;
+	--sl-color-accent-high: #363adb;
+
+	--sl-color-white: #131417;
+	--sl-color-gray-1: #24262d;
+	--sl-color-gray-2: #3d4048;
+	--sl-color-gray-3: #6e7178;
+	--sl-color-gray-4: #a4a7ae;
+	--sl-color-gray-5: #d6d8dc;
+	--sl-color-gray-6: #eeeff2;
+	--sl-color-gray-7: #f7f7f9;
+	--sl-color-black: #ffffff;
+
+	--sl-nav-gap: 1.25rem;
+	--sl-shadow-sm: 0 1px 2px rgba(19, 20, 23, 0.06);
+}
+
+:root[data-theme='dark'] {
+	--sl-color-accent-low: #22235a;
+	--sl-color-accent: #7d7dff;
+	--sl-color-accent-high: #c4c4ff;
+
+	--sl-color-white: #f4f4f6;
+	--sl-color-gray-1: #d8d9de;
+	--sl-color-gray-2: #b0b2ba;
+	--sl-color-gray-3: #85888f;
+	--sl-color-gray-4: #55575e;
+	--sl-color-gray-5: #35363c;
+	--sl-color-gray-6: #242529;
+	--sl-color-gray-7: #1a1b1e;
+	--sl-color-black: #101113;
+}
+
+.sidebar-content a[aria-current='page'] {
+	font-weight: 600;
+}
+
+.starlight-aside {
+	border-radius: 8px;
+}

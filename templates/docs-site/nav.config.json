@@ -1,0 +1,16 @@
+{
+  "name": "Doctor",
+  "siteUrl": "http://localhost:4321",
+  "tabs": [
+    {
+      "label": "Documentation",
+      "slug": "documentation",
+      "groups": [
+        {
+          "label": "Getting Started",
+          "pages": ["introduction"]
+        }
+      ]
+    }
+  ]
+}

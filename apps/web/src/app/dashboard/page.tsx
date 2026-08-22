@@ -49,19 +49,29 @@ export default async function ProjectsPage() {
         </Empty>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
+          {projects.map((project, index) => (
             <Link key={project.id} href={`/dashboard/projects/${project.slug}`}>
-              <Card className="transition-colors hover:bg-muted/40">
+              <Card
+                className="animate-rise transition-[transform,box-shadow,border-color] duration-180 ease-(--ease-out) hover:-translate-y-0.5 hover:border-ring/40 hover:shadow-lg"
+                style={{ animationDelay: `${index * 60}ms` }}
+              >
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{project.name}</CardTitle>
-                    <Badge variant={project.repoFullName ? "secondary" : "outline"}>
-                      {project.repoFullName ? "Connected" : "Not connected"}
-                    </Badge>
+                    {project.repoFullName ? (
+                      <Badge variant="outline" className="gap-1.5 border-transparent bg-success-background text-success">
+                        <span className="size-1.5 rounded-full bg-current" />
+                        Connected
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">Not connected</Badge>
+                    )}
                   </div>
-                  <CardDescription>{project.repoFullName ?? "No repository connected"}</CardDescription>
+                  <CardDescription className="text-pretty">
+                    {project.repoFullName ?? "No repository connected"}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="text-xs text-muted-foreground">{project.slug}.docs</CardContent>
+                <CardContent className="font-mono text-xs text-muted-foreground">{project.slug}.docs</CardContent>
               </Card>
             </Link>
           ))}

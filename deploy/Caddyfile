@@ -1,0 +1,33 @@
+# Doctor's reverse proxy: TLS termination + routing only. All routing logic
+# that needs to be correct (which subdomain maps to which project, whether a
+# hostname is legitimate) lives in the Next.js app, not here — Caddy just
+# proxies the dashboard and serves static files for project docs sites.
+#
+# NOTE: the on-demand TLS + host-label pattern below follows Caddy's
+# documented convention for "one wildcard cert flow per dynamic subdomain".
+# It hasn't been smoke-tested against a live Caddy instance in this session
+# (no way to do that here) — verify it against a real deploy before relying
+# on it in production.
+{
+	on_demand_tls {
+		ask http://app:3000/api/caddy/ask-domain
+	}
+}
+
+# The dashboard itself — plain automatic HTTPS, no on-demand cert needed.
+{$DASHBOARD_URL} {
+	reverse_proxy app:3000
+}
+
+# Every project's docs site: <slug>.docs.<ORG_DOMAIN>. Certificates are
+# issued on first visit via on-demand TLS (validated by the ask endpoint
+# above), so no wildcard DNS-01 setup or DNS provider plugin is required —
+# only that *.docs.<ORG_DOMAIN> already resolves to this server.
+*.docs.{$ORG_DOMAIN} {
+	tls {
+		on_demand
+	}
+	root * /srv/sites/{http.request.host.labels.1}
+	file_server
+	try_files {path} /404.html
+}

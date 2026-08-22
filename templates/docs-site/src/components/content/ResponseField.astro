@@ -1,0 +1,62 @@
+---
+interface Props {
+	name: string;
+	type?: string;
+	default?: string;
+	required?: boolean;
+}
+
+const { name, type, required, default: defaultValue } = Astro.props as Props;
+---
+
+<div class="doc-field">
+	<p class="doc-field-head">
+		<code class="doc-field-name">{name}</code>
+		{type && <span class="doc-field-type">{type}</span>}
+		{required && <span class="doc-field-required">required</span>}
+		{defaultValue && <span class="doc-field-default">default: {defaultValue}</span>}
+	</p>
+	<div class="doc-field-body">
+		<slot />
+	</div>
+</div>
+
+<style>
+	.doc-field {
+		border-top: 1px solid var(--sl-color-gray-5);
+		padding: 0.85rem 0;
+	}
+	.doc-field-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+		margin: 0 0 0.35rem;
+	}
+	.doc-field-name {
+		font-size: var(--sl-text-sm);
+		font-weight: 600;
+		background: transparent;
+		padding: 0;
+	}
+	.doc-field-type,
+	.doc-field-default {
+		font-size: 0.75rem;
+		color: var(--sl-color-gray-3);
+	}
+	.doc-field-required {
+		font-size: 0.7rem;
+		font-weight: 600;
+		color: var(--sl-color-red-high);
+	}
+	.doc-field-body {
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-2);
+	}
+	.doc-field-body :global(> :first-child) {
+		margin-top: 0;
+	}
+	.doc-field-body :global(> :last-child) {
+		margin-bottom: 0;
+	}
+</style>

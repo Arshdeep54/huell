@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 
@@ -13,9 +13,17 @@ export interface DoctorNavTab {
   groups: DoctorNavGroup[];
 }
 
+export interface DoctorNavLink {
+  label: string;
+  href: string;
+}
+
 export interface DoctorNav {
   name: string;
   siteUrl: string;
+  accentColor?: string;
+  navLinks: DoctorNavLink[];
+  navPrimary?: DoctorNavLink;
   tabs: DoctorNavTab[];
 }
 
@@ -31,9 +39,31 @@ interface MintlifyTab {
 interface MintlifyDocsJson {
   name?: string;
   navigation: { tabs?: MintlifyTab[]; groups?: MintlifyGroup[] } | MintlifyGroup[];
+  colors?: { primary?: string };
+  navbar?: {
+    links?: { label: string; href: string }[];
+    primary?: { label: string; href: string };
+  };
 }
 
-const MINTLIFY_COMPONENTS = ["Note", "Info", "Tip", "Check", "Warning", "Danger"] as const;
+const SUPPORTED_MDX_COMPONENTS = [
+  "Note",
+  "Info",
+  "Tip",
+  "Check",
+  "Warning",
+  "Danger",
+  "Card",
+  "CardGroup",
+  "Tabs",
+  "Tab",
+  "Steps",
+  "Step",
+  "CodeGroup",
+  "Expandable",
+  "ParamField",
+  "ResponseField",
+] as const;
 
 function slugify(value: string) {
   return value
@@ -81,7 +111,7 @@ function findSourceFile(docsDir: string, page: string): string | null {
 }
 
 function injectComponentImport(mdxSource: string, relativeImportPath: string): string {
-  const usedComponents = MINTLIFY_COMPONENTS.filter((name) =>
+  const usedComponents = SUPPORTED_MDX_COMPONENTS.filter((name) =>
     new RegExp(`<${name}[\\s>]`).test(mdxSource),
   );
   if (usedComponents.length === 0) return mdxSource;
@@ -140,9 +170,19 @@ export function migrateMintlifyDocs(options: {
   const docsJson = JSON.parse(readFileSync(docsJsonPath, "utf-8")) as MintlifyDocsJson;
 
   const tabs = normalizeTabs(docsJson, warnings);
-  const nav: DoctorNav = { name: docsJson.name ?? projectName, siteUrl, tabs };
+  const nav: DoctorNav = {
+    name: docsJson.name ?? projectName,
+    siteUrl,
+    accentColor: docsJson.colors?.primary,
+    navLinks: docsJson.navbar?.links ?? [],
+    navPrimary: docsJson.navbar?.primary,
+    tabs,
+  };
 
   const contentDir = path.join(destSiteDir, "src", "content", "docs");
+  // Clear out the template's own placeholder content — otherwise it lingers
+  // alongside every real migrated page since we only ever write, never wipe.
+  rmSync(contentDir, { recursive: true, force: true });
   mkdirSync(contentDir, { recursive: true });
 
   for (const tab of tabs) {
@@ -154,7 +194,10 @@ export function migrateMintlifyDocs(options: {
           continue;
         }
 
-        const destFile = path.join(contentDir, tab.slug, `${page}.mdx`);
+        // Mintlify page paths (e.g. "sdk/reference") are already the full path
+        // from the docs root — don't also nest under the tab slug, or a page
+        // whose path happens to start with the tab name double-nests.
+        const destFile = path.join(contentDir, `${page}.mdx`);
         mkdirSync(path.dirname(destFile), { recursive: true });
 
         const raw = readFileSync(sourceFile, "utf-8");
@@ -166,7 +209,7 @@ export function migrateMintlifyDocs(options: {
         const withFrontmatter = matter.stringify(parsed.content, parsed.data);
 
         const relativeImportPath = path
-          .relative(path.dirname(destFile), path.join(destSiteDir, "src", "components", "mintlify"))
+          .relative(path.dirname(destFile), path.join(destSiteDir, "src", "components", "content"))
           .split(path.sep)
           .join("/");
         writeFileSync(destFile, injectComponentImport(withFrontmatter, relativeImportPath));

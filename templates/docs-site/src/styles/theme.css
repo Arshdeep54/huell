@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+@import 'katex/dist/katex.min.css';
 
 :root {
 	--sl-font: 'Geist', ui-sans-serif, system-ui, sans-serif;
@@ -54,4 +55,16 @@
 
 .starlight-aside {
 	border-radius: 8px;
+}
+
+/* Starlight cycles each Card through 4 unrelated hues (orange/purple/green/blue)
+   by grid position. That fights a single-accent brand, so pin every card to
+   the project's own accent instead of rotating. */
+.card,
+.card:nth-child(4n + 1),
+.card:nth-child(4n + 3),
+.card:nth-child(4n + 4),
+.card:nth-child(4n + 5) {
+	--sl-card-border: var(--sl-color-accent);
+	--sl-card-bg: var(--sl-color-accent-low);
 }

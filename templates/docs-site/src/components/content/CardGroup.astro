@@ -1,0 +1,9 @@
+---
+import { CardGrid } from '@astrojs/starlight/components';
+// Mintlify's `cols` prop isn't needed — Starlight's grid is already a fixed
+// 2-column layout above the mobile breakpoint, matching real usage here.
+---
+
+<CardGrid>
+	<slot />
+</CardGrid>

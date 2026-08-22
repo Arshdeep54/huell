@@ -35,19 +35,12 @@ async function nextQueuedBuild() {
 
 async function processBuild(build: typeof schema.builds.$inferSelect) {
   const project = db.select().from(schema.projects).where(eq(schema.projects.id, build.projectId)).get();
-  if (!project || !project.repoFullName) {
-    failBuild(build.id, "Project has no repository connected.");
+  if (!project) {
+    failBuild(build.id, "Project no longer exists.");
     return;
   }
-
-  const installation = db
-    .select()
-    .from(schema.githubInstallations)
-    .where(eq(schema.githubInstallations.projectId, project.id))
-    .get();
-  const appConfig = await getGithubAppConfig();
-  if (!installation || !appConfig) {
-    failBuild(build.id, "GitHub App isn't connected for this project.");
+  if (build.source === "github" && !project.repoFullName) {
+    failBuild(build.id, "Project has no repository connected.");
     return;
   }
 
@@ -57,26 +50,21 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     .run();
 
   const cloneDir = path.join(dataDir, "work", `${build.id}-repo`);
+  const uploadDir = path.join(dataDir, "uploads", build.id);
   const workDir = path.join(dataDir, "work", `${build.id}-site`);
   const log: string[] = [];
 
   try {
-    const app = new App({ appId: appConfig.appId, privateKey: appConfig.privateKey });
-    const tokenResponse = await app.octokit.rest.apps.createInstallationAccessToken({
-      installation_id: installation.installationId,
-    });
-    const token = tokenResponse.data.token;
-
-    mkdirSync(path.dirname(cloneDir), { recursive: true });
-    const cloneUrl = `https://x-access-token:${token}@github.com/${project.repoFullName}.git`;
-    log.push(await runStep("git", ["clone", "--depth", "1", "--branch", project.branch, cloneUrl, cloneDir]));
-    const { stdout: resolvedSha } = await run("git", ["-C", cloneDir, "rev-parse", "HEAD"]);
+    const { sourceDocsDir, resolvedCommitSha } =
+      build.source === "upload"
+        ? { sourceDocsDir: uploadDir, resolvedCommitSha: build.commitSha }
+        : await cloneRepo(project, cloneDir, log);
 
     copyDir(templateDir, workDir);
     symlinkSync(path.join(templateDir, "node_modules"), path.join(workDir, "node_modules"), "dir");
 
     const { warnings } = migrateMintlifyDocs({
-      sourceDocsDir: path.join(cloneDir, project.docsPath),
+      sourceDocsDir,
       destSiteDir: workDir,
       siteUrl: `https://${project.slug}.docs.${orgDomain}`,
       projectName: project.name,
@@ -94,7 +82,7 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     renameSync(siteTmpDir, siteDir);
 
     db.update(schema.builds)
-      .set({ status: "succeeded", commitSha: resolvedSha.trim(), finishedAt: new Date(), log: log.join("\n") })
+      .set({ status: "succeeded", commitSha: resolvedCommitSha, finishedAt: new Date(), log: log.join("\n") })
       .where(eq(schema.builds.id, build.id))
       .run();
 
@@ -110,8 +98,36 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     failBuild(build.id, log.join("\n"));
   } finally {
     rmSync(cloneDir, { recursive: true, force: true });
+    rmSync(uploadDir, { recursive: true, force: true });
     rmSync(workDir, { recursive: true, force: true });
   }
+}
+
+async function cloneRepo(
+  project: typeof schema.projects.$inferSelect,
+  cloneDir: string,
+  log: string[],
+): Promise<{ sourceDocsDir: string; resolvedCommitSha: string }> {
+  const installation = db
+    .select()
+    .from(schema.githubInstallations)
+    .where(eq(schema.githubInstallations.projectId, project.id))
+    .get();
+  const appConfig = await getGithubAppConfig();
+  if (!installation || !appConfig) throw new Error("GitHub App isn't connected for this project.");
+
+  const app = new App({ appId: appConfig.appId, privateKey: appConfig.privateKey });
+  const tokenResponse = await app.octokit.rest.apps.createInstallationAccessToken({
+    installation_id: installation.installationId,
+  });
+  const token = tokenResponse.data.token;
+
+  mkdirSync(path.dirname(cloneDir), { recursive: true });
+  const cloneUrl = `https://x-access-token:${token}@github.com/${project.repoFullName}.git`;
+  log.push(await runStep("git", ["clone", "--depth", "1", "--branch", project.branch, cloneUrl, cloneDir]));
+  const { stdout: resolvedSha } = await run("git", ["-C", cloneDir, "rev-parse", "HEAD"]);
+
+  return { sourceDocsDir: path.join(cloneDir, project.docsPath), resolvedCommitSha: resolvedSha.trim() };
 }
 
 async function runStep(command: string, args: string[], cwd?: string): Promise<string> {

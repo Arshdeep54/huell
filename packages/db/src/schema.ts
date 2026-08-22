@@ -62,9 +62,13 @@ export const githubInstallations = sqliteTable("github_installations", {
 export const buildStatuses = ["queued", "running", "succeeded", "failed"] as const;
 export type BuildStatus = (typeof buildStatuses)[number];
 
+export const buildSources = ["github", "upload"] as const;
+export type BuildSource = (typeof buildSources)[number];
+
 export const builds = sqliteTable("builds", {
   id: text("id").primaryKey(),
   projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  source: text("source", { enum: buildSources }).notNull().default("github"),
   commitSha: text("commit_sha").notNull(),
   status: text("status", { enum: buildStatuses }).notNull().default("queued"),
   log: text("log"),

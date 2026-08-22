@@ -1,0 +1,1 @@
+ALTER TABLE `builds` ADD `source` text DEFAULT 'github' NOT NULL;

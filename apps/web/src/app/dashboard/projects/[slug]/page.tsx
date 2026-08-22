@@ -9,15 +9,16 @@ import {
   removeProjectMember,
   triggerBuild,
   updateProjectSettings,
+  uploadDocsZip,
 } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ExternalLinkIcon, GitBranchIcon, HammerIcon } from "lucide-react";
+import { ExternalLinkIcon, GitBranchIcon, HammerIcon, UploadIcon } from "lucide-react";
 import type { BuildStatus, ProjectRole } from "@doctor/db";
 
 function BuildStatusBadge({ status }: { status: BuildStatus }) {
@@ -85,6 +86,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const boundUpdateSettings = updateProjectSettings.bind(null, project.id);
   const boundAddMember = addProjectMember.bind(null, project.id);
   const boundTriggerBuild = triggerBuild.bind(null, project.id);
+  const boundUploadDocsZip = uploadDocsZip.bind(null, project.id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -127,6 +129,30 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           )}
         </CardContent>
       </Card>
+
+      {canEdit && (
+        <Card className="animate-rise" style={{ animationDelay: "30ms" }}>
+          <CardHeader>
+            <CardTitle className="text-base">Upload docs</CardTitle>
+            <CardDescription className="text-pretty">
+              No repo needed — upload a docs.zip (docs.json, .mdx pages, images) to build from directly.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={boundUploadDocsZip} className="flex items-end gap-2">
+              <Field className="flex-1">
+                <FieldLabel htmlFor="docsZip">docs.zip</FieldLabel>
+                <Input id="docsZip" name="docsZip" type="file" accept=".zip" required />
+                <FieldDescription>20MB limit.</FieldDescription>
+              </Field>
+              <Button type="submit" variant="outline">
+                <UploadIcon data-icon="inline-start" />
+                Upload &amp; build
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {canEdit && (
         <Card className="animate-rise" style={{ animationDelay: "50ms" }}>

@@ -38,14 +38,14 @@ export function AppSidebar({
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
+              <SidebarMenuItem className="animate-rise">
                 <SidebarMenuButton render={<Link href="/dashboard" />} isActive={pathname === "/dashboard"}>
                   <FolderGitIcon />
                   <span>Projects</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               {isOrgAdmin && (
-                <SidebarMenuItem>
+                <SidebarMenuItem className="animate-rise" style={{ animationDelay: "40ms" }}>
                   <SidebarMenuButton
                     render={<Link href="/dashboard/members" />}
                     isActive={pathname === "/dashboard/members"}

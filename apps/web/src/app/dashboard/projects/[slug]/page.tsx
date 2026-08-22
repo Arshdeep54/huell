@@ -18,13 +18,41 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExternalLinkIcon, GitBranchIcon, HammerIcon } from "lucide-react";
+import type { BuildStatus, ProjectRole } from "@doctor/db";
 
-const buildStatusVariant = {
-  queued: "outline",
-  running: "secondary",
-  succeeded: "default",
-  failed: "destructive",
-} as const;
+function BuildStatusBadge({ status }: { status: BuildStatus }) {
+  if (status === "succeeded") {
+    return (
+      <Badge variant="outline" className="gap-1.5 border-transparent bg-success-background text-success">
+        <span className="size-1.5 rounded-full bg-current" />
+        succeeded
+      </Badge>
+    );
+  }
+  if (status === "running") {
+    return (
+      <Badge variant="outline" className="gap-1.5 border-transparent bg-accent text-accent-foreground">
+        <span className="size-1.5 animate-pulse-ring rounded-full bg-current" />
+        running
+      </Badge>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <Badge variant="outline" className="gap-1.5 border-transparent bg-destructive/10 text-destructive">
+        <span className="size-1.5 rounded-full bg-current" />
+        failed
+      </Badge>
+    );
+  }
+  return <Badge variant="outline">queued</Badge>;
+}
+
+function RoleBadge({ role }: { role: ProjectRole }) {
+  if (role === "owner") return <Badge className="bg-accent text-accent-foreground">owner</Badge>;
+  if (role === "editor") return <Badge variant="secondary">editor</Badge>;
+  return <Badge variant="outline">viewer</Badge>;
+}
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const session = await requireSession();
@@ -83,7 +111,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         )}
       </div>
 
-      <Card>
+      <Card className="animate-rise">
         <CardHeader>
           <CardTitle className="text-base">Repository</CardTitle>
           <CardDescription>
@@ -101,7 +129,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
       </Card>
 
       {canEdit && (
-        <Card>
+        <Card className="animate-rise" style={{ animationDelay: "50ms" }}>
           <CardHeader>
             <CardTitle className="text-base">Build settings</CardTitle>
           </CardHeader>
@@ -121,7 +149,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         </Card>
       )}
 
-      <Card>
+      <Card className="animate-rise" style={{ animationDelay: "100ms" }}>
         <CardHeader>
           <CardTitle className="text-base">Builds</CardTitle>
         </CardHeader>
@@ -140,11 +168,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
               <TableBody>
                 {builds.map((build) => (
                   <TableRow key={build.id}>
-                    <TableCell className="font-mono text-xs">{build.commitSha.slice(0, 7)}</TableCell>
+                    <TableCell className="font-mono text-xs tabular-nums">{build.commitSha.slice(0, 7)}</TableCell>
                     <TableCell>
-                      <Badge variant={buildStatusVariant[build.status]}>{build.status}</Badge>
+                      <BuildStatusBadge status={build.status} />
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="text-xs tabular-nums text-muted-foreground">
                       {build.createdAt.toLocaleString()}
                     </TableCell>
                   </TableRow>
@@ -155,7 +183,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="animate-rise" style={{ animationDelay: "150ms" }}>
         <CardHeader>
           <CardTitle className="text-base">Project members</CardTitle>
         </CardHeader>
@@ -198,7 +226,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
                 <TableRow key={member.id}>
                   <TableCell className="text-sm">{member.name}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{memberRole}</Badge>
+                    <RoleBadge role={memberRole} />
                   </TableCell>
                   <TableCell>
                     {canManageMembers && (

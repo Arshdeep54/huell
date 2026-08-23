@@ -1,0 +1,52 @@
+---
+title: Installation
+description: Deploy Doctor to your own server.
+---
+
+## Requirements
+
+- A Linux server
+- Docker, with the Docker Compose plugin (`docker compose version` should work)
+- A domain you control DNS for
+
+## Deploy
+
+```bash
+git clone <this-repo> doctor && cd doctor
+./setup.sh
+```
+
+The first run creates `.env` from `.env.example` and stops there — fill it in before continuing. See [Configuration](/getting-started/configuration) for what each variable does.
+
+```bash
+./setup.sh
+```
+
+The second run builds the images, applies database migrations, and starts everything.
+
+## DNS
+
+Before your first real sign-in, point DNS at your server:
+
+<Steps>
+  <Step title="Dashboard host">
+    Whatever host you set in `DASHBOARD_URL` → your server's IP.
+  </Step>
+  <Step title="Project subdomains">
+    A wildcard record for `*.docs.<ORG_DOMAIN>` → your server's IP. Every project gets `<slug>.docs.<ORG_DOMAIN>` automatically once this resolves.
+  </Step>
+</Steps>
+
+## First sign-in
+
+Open the dashboard and sign in with Google. The first person to sign in becomes org admin — there's no separate setup step for this.
+
+From there:
+
+1. **Settings → GitHub** — click "Create GitHub App" (a one-click flow; no manual GitHub App setup)
+2. **New project** — connect a repo, or upload a `docs.zip`
+3. Push to the connected branch (or re-upload) to trigger a rebuild
+
+<Warning>
+  GitHub validates that a webhook URL is publicly reachable before creating an App — `localhost` won't work. The GitHub App step needs your real `DASHBOARD_URL` to already be resolving.
+</Warning>

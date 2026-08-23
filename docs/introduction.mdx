@@ -1,0 +1,30 @@
+---
+title: Introduction
+description: What Doctor is and why it exists.
+---
+
+Doctor is a self-hostable docs platform: connect a GitHub repo (or upload a `docs.zip`), and Doctor builds and publishes a clean, searchable docs site for it — on your own server, under your own domain.
+
+Doctor is one deployable instance per organization. There's no shared multi-tenant service — you run it, you own the data, you own the infrastructure.
+
+## Why
+
+Popular hosted docs platforms are great for authoring, but self-hosting at their enterprise tier often means a Kubernetes-scale deployment — separate databases for metadata, sessions, and object storage, sized for companies running dozens of large public docs sites.
+
+<Note>
+  Doctor targets a much smaller, more common case: a small team with docs content (MDX + a nav config) who wants it built and served without a vendor contract or that much infrastructure.
+</Note>
+
+The whole stack — dashboard, build worker, and every project's docs site — is designed to run comfortably on a single small VM.
+
+## How it fits together
+
+| Piece | What it is |
+| --- | --- |
+| Dashboard | Sign in, manage projects and members, connect GitHub or upload docs |
+| Build worker | Picks up queued builds, converts your docs into a site, deploys it |
+| Docs sites | One per project, its own subdomain, built with [Astro Starlight](https://starlight.astro.build/) |
+
+<Tip>
+  New to Doctor? Start with [Installation](/getting-started/installation) to get an instance running, then [Configuration](/getting-started/configuration) for the full settings reference.
+</Tip>

@@ -1,0 +1,52 @@
+---
+import Default from '@astrojs/starlight/components/Head.astro';
+---
+
+<Default><slot /></Default>
+
+<script>
+	// Starlight renders every fenced code block through expressive-code, which
+	// wraps each line in its own <div class="ec-line"> for line numbers/copy —
+	// so a plain .textContent read would collapse a multi-line diagram onto one
+	// line. Read line-by-line instead, and re-join with newlines.
+	function readSource(pre) {
+		const lines = pre.querySelectorAll('.ec-line');
+		if (lines.length > 0) return Array.from(lines, (l) => l.textContent ?? '').join('\n');
+		return pre.textContent ?? '';
+	}
+
+	// Rendered client-side, dynamically imported, so pages without a diagram
+	// never pay for the mermaid bundle.
+	async function renderMermaidDiagrams() {
+		const blocks = document.querySelectorAll('pre[data-language="mermaid"]');
+		if (blocks.length === 0) return;
+
+		const { default: mermaid } = await import('mermaid');
+		const isDark = document.documentElement.dataset.theme === 'dark';
+		mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'neutral' });
+
+		let index = 0;
+		for (const pre of blocks) {
+			const { svg } = await mermaid.render(`mermaid-${Date.now()}-${index++}`, readSource(pre));
+			const container = document.createElement('div');
+			container.className = 'mermaid-diagram';
+			container.innerHTML = svg;
+			pre.replaceWith(container);
+		}
+	}
+
+	renderMermaidDiagrams();
+	document.addEventListener('astro:page-load', renderMermaidDiagrams);
+</script>
+
+<style is:global>
+	.mermaid-diagram {
+		display: flex;
+		justify-content: center;
+		margin: 1.5rem 0;
+		overflow-x: auto;
+	}
+	.mermaid-diagram svg {
+		max-width: 100%;
+	}
+</style>

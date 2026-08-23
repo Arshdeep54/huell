@@ -1,0 +1,52 @@
+---
+title: Connecting a project
+description: Two ways to get a project's docs building — GitHub or a zip upload.
+---
+
+A project needs a name and one content source. Pick whichever fits — a project isn't locked into one or the other.
+
+## Option 1: GitHub
+
+<Steps>
+  <Step title="Create the GitHub App (once per instance)">
+    Org admin only, and only needed once: **Settings → GitHub → Create GitHub App**. This is a one-click manifest flow — GitHub hands the credentials straight back, no manual form-filling.
+  </Step>
+  <Step title="Connect a repo">
+    On the project page, **Connect repository** installs the App on one repo and picks it.
+  </Step>
+  <Step title="Push to publish">
+    A push to the project's configured branch triggers a rebuild automatically via webhook.
+  </Step>
+</Steps>
+
+<Note>
+  The GitHub App is installed per-repo, not org-wide — a project's access is exactly the one repo it needs.
+</Note>
+
+## Option 2: Upload a `docs.zip`
+
+No GitHub connection at all. Anyone with editor access on the project can use it:
+
+<Steps>
+  <Step title="Zip your docs folder">
+    Whatever you'd `git clone` and find `docs.json` inside — zip it directly, or zip its parent folder (both work; the wrapping folder is detected and flattened automatically).
+  </Step>
+  <Step title="Upload">
+    On the project page, **Upload docs → Upload & build**. 20MB limit.
+  </Step>
+  <Step title="Re-upload to update">
+    There's no "watch" on an uploaded zip — publishing a change means uploading again.
+  </Step>
+</Steps>
+
+## Who can do what
+
+Roles are per-project, independent of org-admin status:
+
+| Role | Can |
+| --- | --- |
+| Owner | Everything below, plus connect/reconnect the repo, add or remove project members |
+| Editor | Trigger rebuilds, upload docs, edit branch/docs path settings |
+| Viewer | View build history and the live site |
+
+Org admins can do all of the above on every project, regardless of whether they're listed as a project member.

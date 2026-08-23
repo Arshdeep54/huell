@@ -1,0 +1,22 @@
+{
+  "name": "Doctor",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "introduction",
+          "getting-started/installation",
+          "getting-started/configuration"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/migrating-existing-docs",
+          "guides/connecting-a-project"
+        ]
+      }
+    ]
+  }
+}

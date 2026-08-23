@@ -1,0 +1,55 @@
+---
+title: Configuration
+description: Every environment variable Doctor reads, and what it's for.
+---
+
+All configuration lives in `.env` at the repo root. `.env.example` has the full annotated list — this page is the reference version.
+
+## Instance
+
+<ParamField body="ORG_DOMAIN" type="string" required>
+  Root domain project docs are served under. A project with slug `vector-db` becomes reachable at `vector-db.docs.<ORG_DOMAIN>`.
+</ParamField>
+
+<ParamField body="DASHBOARD_URL" type="string" required>
+  The full origin the dashboard itself is served at, e.g. `https://docs.example.com`.
+</ParamField>
+
+## Auth
+
+<ParamField body="GOOGLE_CLIENT_ID" type="string" required>
+  From the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+</ParamField>
+
+<ParamField body="GOOGLE_CLIENT_SECRET" type="string" required>
+  Paired with `GOOGLE_CLIENT_ID`. Set the authorized redirect URI to `${DASHBOARD_URL}/api/auth/callback/google` when creating the OAuth client.
+</ParamField>
+
+<ParamField body="AUTH_SECRET" type="string" required>
+  Random 32+ byte secret used to sign session cookies. Generate one with `openssl rand -base64 32`.
+</ParamField>
+
+## GitHub App
+
+<Note>
+  Leave all of these unset. After signing in as org admin, use the "Create GitHub App" button on **Settings → GitHub** — a one-click flow that creates the App and stores its credentials for you. These variables are only a fallback for creating the App by hand.
+</Note>
+
+<ParamField body="GITHUB_APP_ID" type="string" />
+<ParamField body="GITHUB_APP_SLUG" type="string" />
+<ParamField body="GITHUB_APP_CLIENT_ID" type="string" />
+<ParamField body="GITHUB_APP_CLIENT_SECRET" type="string" />
+
+<ParamField body="GITHUB_APP_PRIVATE_KEY_PATH" type="string" default="/run/secrets/github-app.pem">
+  Path to the App's private key `.pem`. If set manually, mount the key file into both the `app` and `worker` containers at this path (see `docker-compose.yml`).
+</ParamField>
+
+<ParamField body="GITHUB_WEBHOOK_SECRET" type="string">
+  Set when creating the webhook on the App.
+</ParamField>
+
+## Storage
+
+<ParamField body="DATA_DIR" type="string" default="/data">
+  Where the SQLite database and all build output live. Must be an absolute path — the dashboard, the migration runner, and the build worker each run from a different working directory and need to agree on one location. Inside Docker this is always `/data`, mapped to `./data` on the host.
+</ParamField>

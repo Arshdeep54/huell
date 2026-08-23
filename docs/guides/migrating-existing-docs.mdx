@@ -1,0 +1,50 @@
+---
+title: Migrating existing docs
+description: Bringing an existing docs/ folder into Doctor with minimal changes.
+---
+
+If you already have a `docs/` folder — a `docs.json` nav config, `.mdx` pages, an `images/` folder — it works with Doctor with no restructuring. Connect the repo, or zip the `docs/` folder and upload it.
+
+## Supported `docs.json` fields
+
+<ResponseField name="navigation" type="object">
+  Flat (`navigation.groups`), grouped, or tabbed (`navigation.tabs`) — all three shapes are read directly. Tabs become top-level sidebar sections.
+</ResponseField>
+
+<ResponseField name="colors.primary" type="string">
+  Used as the site's accent color, derived into a full light/dark scale automatically.
+</ResponseField>
+
+<ResponseField name="navbar.links" type="array">
+  Rendered as plain links in the top navbar.
+</ResponseField>
+
+<ResponseField name="navbar.primary" type="object">
+  Rendered as a highlighted button in the top navbar (commonly a GitHub link).
+</ResponseField>
+
+## Callouts and components
+
+These content components are available in every page without an import — write them exactly as you already have them:
+
+`Note`, `Info`, `Tip`, `Check`, `Warning`, `Danger`, `Card`, `CardGroup`, `Tabs`, `Tab`, `Steps`, `Step`, `CodeGroup`, `Expandable`, `ParamField`, `ResponseField`.
+
+<Tip>
+  Frontmatter (`title`, `description`) is copied as-is. A page with no `title` gets one defaulted from its filename, and a warning is logged so you know it happened.
+</Tip>
+
+## LaTeX math
+
+`$$...$$` block math is supported and renders with proper typesetting — no configuration needed.
+
+## Known gaps
+
+<Warning>
+  `CodeGroup` renders its child code blocks stacked, not as switchable tabs — the multi-language code examples all show, just not with a tab switcher yet.
+</Warning>
+
+<Warning>
+  An OpenAPI spec (`api.openapi`) is copied into the built site as a static file, not turned into generated API reference pages.
+</Warning>
+
+If your docs use a component outside the list above, the build fails on that page rather than silently dropping content. The failure is recorded on the build, though there's no dashboard view for the log yet — check it directly on the `builds` table in the database in the meantime.

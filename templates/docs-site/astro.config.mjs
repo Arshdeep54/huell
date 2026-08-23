@@ -38,6 +38,7 @@ export default defineConfig({
 			sidebar,
 			components: {
 				Header: './src/components/Header.astro',
+				Head: './src/components/Head.astro',
 			},
 			customCss: ['./src/styles/theme.css'],
 			head: accentOverrideCss

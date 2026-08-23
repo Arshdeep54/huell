@@ -25,6 +25,8 @@ The whole stack — dashboard, build worker, and every project's docs site — i
 | Build worker | Picks up queued builds, converts your docs into a site, deploys it |
 | Docs sites | One per project, its own subdomain, built with [Astro Starlight](https://starlight.astro.build/) |
 
+See [Architecture](/architecture) for how a request actually gets routed to each of these, and how TLS certificates get issued per project.
+
 <Tip>
   New to Doctor? Start with [Installation](/getting-started/installation) to get an instance running, then [Configuration](/getting-started/configuration) for the full settings reference.
 </Tip>

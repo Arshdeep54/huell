@@ -6,6 +6,7 @@
         "group": "Getting Started",
         "pages": [
           "introduction",
+          "architecture",
           "getting-started/installation",
           "getting-started/configuration"
         ]

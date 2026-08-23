@@ -1,12 +1,12 @@
 # Doctor
 
-A self-hostable docs platform: connect a GitHub repo (or just upload a `docs.zip`), and Doctor builds and publishes a Mintlify-style docs site for it — on your own server, under your own domain, with no vendor lock-in.
+A self-hostable docs platform: connect a GitHub repo (or just upload a `docs.zip`), and Doctor builds and publishes a clean, searchable docs site for it — on your own server, under your own domain, with no vendor lock-in.
 
 Doctor is one deployable instance per organization. There's no shared multi-tenant service — you run it, you own the data, you own the infrastructure.
 
 ## Why
 
-Mintlify's hosted platform is great for authoring, but self-hosting it requires their Enterprise plan — a Kubernetes-scale deployment (MongoDB + PostgreSQL + Redis + object storage, 45–60 vCPUs) built for companies running dozens of large public docs sites. Doctor targets the much more common case: a small team that wants their docs content (MDX + a nav config, already close to Mintlify's format) built and served without a vendor contract or that much infrastructure. The whole stack is designed to run comfortably on a single small VM.
+Popular hosted docs platforms are great for authoring, but self-hosting at their enterprise tier often means a Kubernetes-scale deployment (MongoDB + PostgreSQL + Redis + object storage, 45–60 vCPUs) built for companies running dozens of large public docs sites. Doctor targets the much more common case: a small team that wants their docs content (MDX + a nav config) built and served without a vendor contract or that much infrastructure. The whole stack is designed to run comfortably on a single small VM.
 
 ## Features
 
@@ -14,7 +14,7 @@ Mintlify's hosted platform is great for authoring, but self-hosting it requires 
 - **Projects** connect to a GitHub repo (auto-rebuild on push) or accept a **`docs.zip` upload** — no GitHub required at all if you'd rather not connect one
 - **Per-project roles** (owner/editor/viewer), independent of org-admin status
 - One-click **GitHub App creation** from the dashboard (a manifest flow — no manual App setup)
-- Docs sites built with [Astro Starlight](https://starlight.astro.build/), themed to resemble Mintlify: grouped/tabbed sidebar nav, search, dark mode by default, LaTeX math, and Mintlify-compatible callouts and components (`Note`, `Tip`, `Warning`, `Card`, `Steps`, `Tabs`, `ParamField`, `ResponseField`, ...)
+- Docs sites built with [Astro Starlight](https://starlight.astro.build/): grouped/tabbed sidebar nav, search, dark mode by default, LaTeX math, and a familiar set of callout and content components (`Note`, `Tip`, `Warning`, `Card`, `Steps`, `Tabs`, `ParamField`, `ResponseField`, ...)
 - Each project gets its own subdomain (`<slug>.docs.<your-domain>`) with automatic HTTPS
 - Ships as Docker images + a Caddy reverse proxy; `setup.sh` brings the whole thing up with one command
 
@@ -63,9 +63,9 @@ All configuration is environment variables in `.env` (see `.env.example` for the
 | `GITHUB_APP_*` | Leave unset — created via the dashboard's manifest flow instead. Only fill in if you'd rather create the GitHub App by hand. |
 | `DATA_DIR` | Where the SQLite DB and all build output live. Must be an absolute path (`/data` in Docker). |
 
-### Migrating existing Mintlify-format docs
+### Migrating existing docs
 
-If you already have a `docs/` folder in Mintlify's format (`docs.json` + `.mdx` pages + `images/`), it works with Doctor with no restructuring — connect the repo or zip the `docs/` folder and upload it. Supported `docs.json` fields: `navigation` (flat, grouped, or tabbed), `colors.primary` (used as the site's accent color), `navbar.links`/`navbar.primary`.
+If you already have a `docs/` folder in the common `docs.json` + `.mdx` + `images/` shape, it works with Doctor with no restructuring — connect the repo or zip the `docs/` folder and upload it. Supported `docs.json` fields: `navigation` (flat, grouped, or tabbed), `colors.primary` (used as the site's accent color), `navbar.links`/`navbar.primary`.
 
 Known gaps in the migration: `CodeGroup` renders as stacked code blocks rather than switchable tabs, and an OpenAPI spec (`api.openapi`) is copied as a static file rather than turned into generated reference pages.
 

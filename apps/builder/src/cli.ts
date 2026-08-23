@@ -1,17 +1,17 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyDir } from "./copy-dir";
-import { migrateMintlifyDocs } from "./migrate-mintlify";
+import { migrateDocs } from "./migrate-docs";
 
 // Standalone migration preview: copies the docs-site template, then converts a
-// Mintlify-format docs/ folder into it, so it can be built and eyeballed on its own.
+// A docs/ folder into it, so it can be built and eyeballed on its own.
 //
-// Usage: pnpm --filter @doctor/builder migrate-mintlify <sourceDocsDir> <destDir> [projectName]
+// Usage: pnpm --filter @doctor/builder migrate-docs <sourceDocsDir> <destDir> [projectName]
 
 const [sourceDocsDir, destDir, projectName] = process.argv.slice(2);
 
 if (!sourceDocsDir || !destDir) {
-  console.error("Usage: migrate-mintlify <sourceDocsDir> <destDir> [projectName]");
+  console.error("Usage: migrate-docs <sourceDocsDir> <destDir> [projectName]");
   process.exit(1);
 }
 
@@ -19,7 +19,7 @@ const templateDir = fileURLToPath(new URL("../../../templates/docs-site", import
 
 copyDir(templateDir, destDir);
 
-const { warnings } = migrateMintlifyDocs({
+const { warnings } = migrateDocs({
   sourceDocsDir: path.resolve(sourceDocsDir),
   destSiteDir: path.resolve(destDir),
   siteUrl: "http://localhost:4321",

@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { App } from "octokit";
 import { asc, eq } from "drizzle-orm";
 import { copyDir } from "./copy-dir";
-import { migrateMintlifyDocs } from "./migrate-mintlify";
+import { migrateDocs } from "./migrate-docs";
 import { getGithubAppConfig } from "./github-app-config";
 
 // tsx/node don't auto-load .env — do it before importing @doctor/db, since
@@ -65,7 +65,7 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     // node_modules co-located with the project root it belongs to — a copy +
     // symlinked node_modules elsewhere breaks Vite's module resolution once
     // DATA_DIR lives on a different path than the code (as it does in Docker).
-    const { warnings } = migrateMintlifyDocs({
+    const { warnings } = migrateDocs({
       sourceDocsDir,
       destSiteDir: templateDir,
       siteUrl: `https://${project.slug}.docs.${orgDomain}`,

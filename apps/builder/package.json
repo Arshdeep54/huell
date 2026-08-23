@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
-    "migrate-mintlify": "tsx src/cli.ts"
+    "migrate-docs": "tsx src/cli.ts"
   },
   "dependencies": {
     "@doctor/db": "workspace:*",

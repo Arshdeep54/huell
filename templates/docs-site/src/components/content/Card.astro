@@ -10,9 +10,9 @@ interface Props {
 const { title, icon, href } = Astro.props as Props;
 
 // Starlight's icon set is small (nav/UI glyphs, not brand icons) and silently
-// renders an empty — but still boxed — icon for any name outside it. Mintlify's
-// icon vocabulary (docker, rust, rocket, ...) mostly falls outside that set, so
-// only pass one through when it's actually going to draw something.
+// renders an empty — but still boxed — icon for any name outside it. Common
+// source icon names (docker, rust, rocket, ...) mostly fall outside that set,
+// so only pass one through when it's actually going to draw something.
 const STARLIGHT_ICONS = new Set([
 	'add-document', 'approve-check', 'approve-check-circle', 'cloud-download',
 	'code-branch', 'comment-alt', 'down-arrow', 'down-caret', 'forward-slash',

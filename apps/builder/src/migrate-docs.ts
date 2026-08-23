@@ -27,18 +27,18 @@ export interface DoctorNav {
   tabs: DoctorNavTab[];
 }
 
-type MintlifyPage = string | { group: string; pages: MintlifyPage[] };
-interface MintlifyGroup {
+type SourcePage = string | { group: string; pages: SourcePage[] };
+interface SourceGroup {
   group: string;
-  pages: MintlifyPage[];
+  pages: SourcePage[];
 }
-interface MintlifyTab {
+interface SourceTab {
   tab: string;
-  groups: MintlifyGroup[];
+  groups: SourceGroup[];
 }
-interface MintlifyDocsJson {
+interface SourceDocsJson {
   name?: string;
-  navigation: { tabs?: MintlifyTab[]; groups?: MintlifyGroup[] } | MintlifyGroup[];
+  navigation: { tabs?: SourceTab[]; groups?: SourceGroup[] } | SourceGroup[];
   colors?: { primary?: string };
   navbar?: {
     links?: { label: string; href: string }[];
@@ -73,7 +73,7 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function flattenPages(pages: MintlifyPage[], warnings: string[]): string[] {
+function flattenPages(pages: SourcePage[], warnings: string[]): string[] {
   return pages.flatMap((page) => {
     if (typeof page === "string") return [page];
     warnings.push(`Nested group "${page.group}" was flattened into its parent group.`);
@@ -81,10 +81,10 @@ function flattenPages(pages: MintlifyPage[], warnings: string[]): string[] {
   });
 }
 
-function normalizeTabs(docsJson: MintlifyDocsJson, warnings: string[]): DoctorNavTab[] {
+function normalizeTabs(docsJson: SourceDocsJson, warnings: string[]): DoctorNavTab[] {
   const { navigation } = docsJson;
 
-  const toTab = (label: string, groups: MintlifyGroup[]): DoctorNavTab => ({
+  const toTab = (label: string, groups: SourceGroup[]): DoctorNavTab => ({
     label,
     slug: slugify(label),
     groups: groups.map((g) => ({ label: g.group, pages: flattenPages(g.pages, warnings) })),
@@ -149,12 +149,12 @@ function copyRecursive(source: string, dest: string, warnings: string[]) {
 }
 
 /**
- * Converts a Mintlify-format docs/ folder (docs.json + .mdx pages + images/)
+ * Converts a a docs/ folder (docs.json + .mdx pages + images/)
  * into the docs-site template's nav.config.json + src/content/docs tree.
- * Mintlify callout tags (<Note>, <Info>, etc.) are left untouched in the MDX —
+ * Callout tags (<Note>, <Info>, etc.) are left untouched in the MDX —
  * only one import line is injected per file, so content stays a near-straight copy.
  */
-export function migrateMintlifyDocs(options: {
+export function migrateDocs(options: {
   sourceDocsDir: string;
   destSiteDir: string;
   siteUrl: string;
@@ -167,7 +167,7 @@ export function migrateMintlifyDocs(options: {
   if (!existsSync(docsJsonPath)) {
     throw new Error(`No docs.json found at ${docsJsonPath}`);
   }
-  const docsJson = JSON.parse(readFileSync(docsJsonPath, "utf-8")) as MintlifyDocsJson;
+  const docsJson = JSON.parse(readFileSync(docsJsonPath, "utf-8")) as SourceDocsJson;
 
   const tabs = normalizeTabs(docsJson, warnings);
   const nav: DoctorNav = {
@@ -194,7 +194,7 @@ export function migrateMintlifyDocs(options: {
           continue;
         }
 
-        // Mintlify page paths (e.g. "sdk/reference") are already the full path
+        // Source page paths (e.g. "sdk/reference") are already the full path
         // from the docs root — don't also nest under the tab slug, or a page
         // whose path happens to start with the tab name double-nests.
         const destFile = path.join(contentDir, `${page}.mdx`);

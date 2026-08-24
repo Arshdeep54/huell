@@ -21,6 +21,8 @@ export default async function GithubSettingsPage({
     url: dashboardUrl,
     hook_attributes: { url: `${dashboardUrl}/api/github/webhook` },
     redirect_url: `${dashboardUrl}/api/github/manifest-callback`,
+    setup_url: `${dashboardUrl}/api/github/install/callback`,
+    setup_on_update: true,
     public: false,
     default_permissions: { contents: "read", metadata: "read", pull_requests: "read" },
     default_events: ["push"],

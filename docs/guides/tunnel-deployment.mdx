@@ -1,0 +1,98 @@
+---
+title: Tunnel deployment
+description: Deploying Doctor on a server with no public IP — behind NAT, a campus network, or a corporate firewall.
+---
+
+[Installation](/getting-started/installation) assumes your server has a public IP with 80/443 reachable, so Caddy can get its own certificates automatically. Plenty of real servers don't have that — a machine on a university lab network, an office server behind NAT, anything without direct inbound access. This page is for that case.
+
+<Note>
+  If your server already has a public IP and 80/443 are reachable, you don't need any of this — follow [Installation](/getting-started/installation) instead. This path exists specifically for servers that aren't directly reachable from the internet.
+</Note>
+
+## How it's different
+
+Caddy normally terminates TLS itself, requesting certificates directly from Let's Encrypt — which only works if the internet can actually reach your server to complete that verification. Behind a tunnel, an outbound-only connection from your server carries traffic in instead, and the tunnel provider's edge terminates TLS. Caddy still does the routing, just over plain HTTP internally.
+
+<CardGroup cols={2}>
+  <Card title="Direct exposure">
+    Public IP, 80/443 reachable. Caddy requests its own certificates. See [Installation](/getting-started/installation).
+  </Card>
+  <Card title="Tunnel (this page)">
+    No inbound access needed. An outbound connection from your server carries traffic in; the tunnel's edge handles TLS.
+  </Card>
+</CardGroup>
+
+These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/) since it's free with no bandwidth limits, but the same shape works with any outbound tunnel — the only Doctor-specific pieces are `deploy/Caddyfile.tunnel` and the optional `cloudflared` service in `docker-compose.yml`.
+
+## Setup
+
+<Steps>
+  <Step title="Point your domain at Cloudflare">
+    Your domain's DNS needs to be on Cloudflare (free tier is enough). If it's registered elsewhere, add it as a zone and update your registrar's nameservers to Cloudflare's.
+  </Step>
+  <Step title="Install cloudflared on your server">
+    No root needed — it's a standalone binary:
+    ```bash
+    mkdir -p ~/bin
+    curl -L -o ~/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+    chmod +x ~/bin/cloudflared
+    ```
+  </Step>
+  <Step title="Authenticate and create a tunnel">
+    ```bash
+    cloudflared tunnel login
+    cloudflared tunnel create doctor
+    ```
+    The login step prints a URL — open it in a browser on any device and authorize your domain. `tunnel create` writes credentials to `~/.cloudflared/`.
+  </Step>
+  <Step title="Route your hostnames">
+    One route for the dashboard, one wildcard for every project:
+    ```bash
+    cloudflared tunnel route dns doctor docs.example.com
+    cloudflared tunnel route dns doctor '*.docs.example.com'
+    ```
+  </Step>
+  <Step title="Enable Total TLS">
+    Cloudflare's free certificate only covers one subdomain level (`*.example.com`), not two (`*.docs.example.com`). In the Cloudflare dashboard: **SSL/TLS → Edge Certificates → Total TLS → On**. Free, just not automatic.
+  </Step>
+  <Step title="Place tunnel credentials where Docker can read them">
+    ```bash
+    mkdir -p deploy/cloudflared
+    cp ~/.cloudflared/cert.pem ~/.cloudflared/*.json deploy/cloudflared/
+    ```
+    Write `deploy/cloudflared/config.yml` — note the service targets are Docker Compose service names, not `localhost`, since `cloudflared` runs as a container on the same network as `caddy`:
+    ```yaml
+    tunnel: <your-tunnel-id>
+    credentials-file: /etc/cloudflared/<your-tunnel-id>.json
+    ingress:
+      - hostname: docs.example.com
+        service: http://caddy:80
+      - hostname: "*.docs.example.com"
+        service: http://caddy:80
+      - service: http_status:404
+    ```
+    <Warning>
+      `deploy/cloudflared/` holds real credentials — it's already in `.gitignore`. Never commit it.
+    </Warning>
+  </Step>
+  <Step title="Set the two tunnel-specific env vars">
+    In `.env`, alongside the usual [configuration](/getting-started/configuration):
+    ```bash
+    DASHBOARD_HOST=docs.example.com
+    AUTH_URL=https://docs.example.com
+    ```
+  </Step>
+  <Step title="Start everything">
+    ```bash
+    cp deploy/Caddyfile.tunnel deploy/Caddyfile
+    docker compose --profile tunnel up -d
+    ```
+  </Step>
+</Steps>
+
+## Shared servers
+
+If the server runs other projects too (a shared lab or club server), two things to check first:
+
+- **Port collisions**: `ss -tlnp` before starting anything — `docker-compose.yml` binds 80/443 on the host by default, which is usually free even on a busy shared box since most other projects don't need those specifically, but verify.
+- **Tunnel ownership**: a personal Cloudflare account works fine for testing, but for anything meant to outlive one person's involvement, create the tunnel under a shared/org-owned Cloudflare account instead — otherwise the whole deployment depends on one person's account staying active.

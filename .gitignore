@@ -14,6 +14,7 @@ apps/web/.next/
 
 # runtime data (sqlite db, per-project build output, github private keys)
 data/
+deploy/cloudflared/
 
 # logs
 *.log

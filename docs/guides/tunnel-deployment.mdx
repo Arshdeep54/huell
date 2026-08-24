@@ -45,15 +45,20 @@ These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-
     ```
     The login step prints a URL — open it in a browser on any device and authorize your domain. `tunnel create` writes credentials to `~/.cloudflared/`.
   </Step>
-  <Step title="Route your hostnames">
-    One route for the dashboard, one wildcard for every project:
+  <Step title="Check whether you have Total TLS">
+    Cloudflare's free certificate covers your domain plus one subdomain level (`*.example.com`) — Doctor's project URLs (`<slug>.docs.example.com`) are one level deeper than that, so they need **Total TLS** (SSL/TLS → Edge Certificates → Total TLS in the Cloudflare dashboard). Many orgs already have this on — check there first. If it's not on and your plan doesn't include it for free, it's a paid add-on; if you'd rather not pay, use the single-level route below instead of the wildcard one.
+  </Step>
+  <Step title="Route the dashboard's hostname">
+    Same either way:
     ```bash
     cloudflared tunnel route dns doctor docs.example.com
-    cloudflared tunnel route dns doctor '*.docs.example.com'
     ```
   </Step>
-  <Step title="Enable Total TLS">
-    Cloudflare's free certificate only covers one subdomain level (`*.example.com`), not two (`*.docs.example.com`). In the Cloudflare dashboard: **SSL/TLS → Edge Certificates → Total TLS → On**. Free, just not automatic.
+  <Step title="Route your first project, if Total TLS is off">
+    With Total TLS on, skip this — the wildcard route two steps up already covers every project, forever. Without it, each project needs its own exact route (a wildcard like `*-docs.example.com` isn't valid DNS syntax — a wildcard can only ever match one whole label). Once `DOCS_SUBDOMAIN_SEPARATOR=-` is set (next step) and a project exists, its page in the dashboard shows you the exact command to run here — this is just the shape of it:
+    ```bash
+    cloudflared tunnel route dns doctor vortexdb-docs.example.com
+    ```
   </Step>
   <Step title="Place tunnel credentials where Docker can read them">
     ```bash
@@ -75,11 +80,13 @@ These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-
       `deploy/cloudflared/` holds real credentials — it's already in `.gitignore`. Never commit it.
     </Warning>
   </Step>
-  <Step title="Set the two tunnel-specific env vars">
+  <Step title="Set the tunnel-specific env vars">
     In `.env`, alongside the usual [configuration](/getting-started/configuration):
     ```bash
     DASHBOARD_HOST=docs.example.com
     AUTH_URL=https://docs.example.com
+    # only if Total TLS is off — omit entirely if it's on
+    DOCS_SUBDOMAIN_SEPARATOR=-
     ```
   </Step>
   <Step title="Start everything">
@@ -89,6 +96,10 @@ These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-
     ```
   </Step>
 </Steps>
+
+<Note>
+  With `DOCS_SUBDOMAIN_SEPARATOR=-` set, every project's page in the dashboard shows the exact `cloudflared tunnel route dns` command needed to bring its docs online — no need to track this guide's steps per project, just follow what the dashboard shows.
+</Note>
 
 ## Shared servers
 

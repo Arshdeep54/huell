@@ -11,6 +11,7 @@ node_modules/
 dist/
 .astro/
 apps/web/.next/
+*.tsbuildinfo
 
 # runtime data (sqlite db, per-project build output, github private keys)
 data/

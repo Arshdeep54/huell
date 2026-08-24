@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
   const orgDomain = process.env.ORG_DOMAIN;
   if (!domain || !orgDomain) return new NextResponse("Forbidden", { status: 403 });
 
-  const suffix = `.docs.${orgDomain}`;
+  const separator = process.env.DOCS_SUBDOMAIN_SEPARATOR === "-" ? "-" : ".";
+  const suffix = `${separator}docs.${orgDomain}`;
   if (!domain.endsWith(suffix)) return new NextResponse("Forbidden", { status: 403 });
 
   const slug = domain.slice(0, -suffix.length);

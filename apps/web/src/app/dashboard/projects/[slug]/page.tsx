@@ -11,6 +11,7 @@ import {
   updateProjectSettings,
   uploadDocsZip,
 } from "@/lib/actions";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field";
@@ -83,6 +84,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
     .all();
 
   const orgDomain = process.env.ORG_DOMAIN ?? "example.com";
+  const docsSubdomainSeparator = process.env.DOCS_SUBDOMAIN_SEPARATOR === "-" ? "-" : ".";
+  const docsHost = `${project.slug}${docsSubdomainSeparator}docs.${orgDomain}`;
   const boundUpdateSettings = updateProjectSettings.bind(null, project.id);
   const boundAddMember = addProjectMember.bind(null, project.id);
   const boundTriggerBuild = triggerBuild.bind(null, project.id);
@@ -94,12 +97,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         <div>
           <h1 className="text-lg font-semibold">{project.name}</h1>
           <a
-            href={`https://${project.slug}.docs.${orgDomain}`}
+            href={`https://${docsHost}`}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
-            {project.slug}.docs.{orgDomain}
+            {docsHost}
             <ExternalLinkIcon className="size-3" />
           </a>
         </div>
@@ -112,6 +115,22 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           </form>
         )}
       </div>
+
+      {canEdit && docsSubdomainSeparator === "-" && (
+        <Alert>
+          <AlertTitle>One-time step to make this project's docs reachable</AlertTitle>
+          <AlertDescription>
+            <p>
+              This instance routes project docs one at a time rather than with a wildcard. Run this once on your
+              server, then add a matching line to <code>deploy/cloudflared/config.yml</code> and restart the{" "}
+              <code>cloudflared</code> container:
+            </p>
+            <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">
+              <code>{`cloudflared tunnel route dns <your-tunnel-name> ${docsHost}`}</code>
+            </pre>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card className="animate-rise">
         <CardHeader>

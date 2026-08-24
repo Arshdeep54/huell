@@ -26,6 +26,8 @@ These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-
 
 ## Setup
 
+This section gets the dashboard itself live. It's all you need to do up front — bringing a project's docs online later is a separate, much shorter section below, not part of this walkthrough.
+
 <Steps>
   <Step title="Point your domain at Cloudflare">
     Your domain's DNS needs to be on Cloudflare (free tier is enough). If it's registered elsewhere, add it as a zone and update your registrar's nameservers to Cloudflare's.
@@ -43,30 +45,34 @@ These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-
     cloudflared tunnel login
     cloudflared tunnel create doctor
     ```
-    The login step prints a URL — open it in a browser on any device and authorize your domain. `tunnel create` writes credentials to `~/.cloudflared/`.
+    The login step prints a URL — open it in a browser on any device and authorize your domain. `tunnel create` writes credentials to `~/.cloudflared/`, and prints a **tunnel ID** you'll need in a couple steps — keep it visible.
   </Step>
   <Step title="Check whether you have Total TLS">
-    Cloudflare's free certificate covers your domain plus one subdomain level (`*.example.com`) — Doctor's project URLs (`<slug>.docs.example.com`) are one level deeper than that, so they need **Total TLS** (SSL/TLS → Edge Certificates → Total TLS in the Cloudflare dashboard). Many orgs already have this on — check there first. If it's not on and your plan doesn't include it for free, it's a paid add-on; if you'd rather not pay, use the single-level route below instead of the wildcard one.
+    Cloudflare's free certificate covers your domain plus one subdomain level (`*.example.com`) — Doctor's project URLs (`<slug>.docs.example.com`) are one level deeper than that, so they need **Total TLS** (SSL/TLS → Edge Certificates → Total TLS in the Cloudflare dashboard). Many orgs already have this on — check there first. If it's not on and your plan doesn't include it for free, it's a paid add-on. This decides which of the two `config.yml` versions you write two steps down — note which one applies to you before continuing.
   </Step>
   <Step title="Route the dashboard's hostname">
-    Same either way:
+    The only DNS route you need before starting anything — this is not project-specific:
     ```bash
     cloudflared tunnel route dns doctor docs.example.com
-    ```
-  </Step>
-  <Step title="Route your first project, if Total TLS is off">
-    With Total TLS on, skip this — the wildcard route two steps up already covers every project, forever. Without it, each project needs its own exact route (a wildcard like `*-docs.example.com` isn't valid DNS syntax — a wildcard can only ever match one whole label). Once `DOCS_SUBDOMAIN_SEPARATOR=-` is set (next step) and a project exists, its page in the dashboard shows you the exact command to run here — this is just the shape of it:
-    ```bash
-    cloudflared tunnel route dns doctor vortexdb-docs.example.com
     ```
   </Step>
   <Step title="Place tunnel credentials where Docker can read them">
     ```bash
     mkdir -p deploy/cloudflared
     cp ~/.cloudflared/cert.pem ~/.cloudflared/*.json deploy/cloudflared/
+    chmod 644 deploy/cloudflared/*.json
     ```
-    Write `deploy/cloudflared/config.yml` — note the service targets are Docker Compose service names, not `localhost`, since `cloudflared` runs as a container on the same network as `caddy`:
+    Your tunnel ID is the filename you just copied — `ls deploy/cloudflared/*.json` shows `<tunnel-id>.json`. (`cloudflared tunnel list` also shows it, if you need it again later.)
+
+    <Note>
+      The `chmod` matters: `cloudflared tunnel create` writes that file owner-only-readable, but the `cloudflared` Docker image runs as a non-root user — without this, it fails with `permission denied` and the tunnel never actually connects (Cloudflare shows this to visitors as "Error 1033").
+    </Note>
+
+    Write `deploy/cloudflared/config.yml` — service targets are Docker Compose service names, not `localhost`, since `cloudflared` runs as a container on the same network as `caddy`. Use whichever matches step 4:
+
+    **Total TLS on** — one wildcard line covers every project, forever, with nothing more to do here later:
     ```yaml
+    protocol: http2
     tunnel: <your-tunnel-id>
     credentials-file: /etc/cloudflared/<your-tunnel-id>.json
     ingress:
@@ -76,6 +82,20 @@ These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-
         service: http://caddy:80
       - service: http_status:404
     ```
+
+    **Total TLS off** — just the dashboard for now. Project lines get added one at a time, later, in the section below:
+    ```yaml
+    protocol: http2
+    tunnel: <your-tunnel-id>
+    credentials-file: /etc/cloudflared/<your-tunnel-id>.json
+    ingress:
+      - hostname: docs.example.com
+        service: http://caddy:80
+      - service: http_status:404
+    ```
+    <Note>
+      `protocol: http2` matters more than it looks — `cloudflared` defaults to QUIC (UDP), and plenty of institutional/campus networks block or filter UDP, which makes it hang and retry indefinitely instead of failing fast. Forcing HTTP2 (plain TCP) avoids that entirely.
+    </Note>
     <Warning>
       `deploy/cloudflared/` holds real credentials — it's already in `.gitignore`. Never commit it.
     </Warning>
@@ -93,16 +113,43 @@ These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-
       `CADDYFILE` swaps which Caddy config gets used, without touching the tracked `deploy/Caddyfile` — so `git pull` never conflicts with a local override. Don't `cp` the tunnel Caddyfile over the real one.
     </Note>
   </Step>
-  <Step title="Start everything">
+  <Step title="Build, migrate, and start">
     ```bash
+    docker compose build
+    docker compose run --rm worker pnpm --filter @doctor/db migrate
     docker compose --profile tunnel up -d
     ```
+    <Warning>
+      The migrate step is easy to miss — skipping it doesn't error at startup, it just fails later with `no such table: members` the first time someone tries to sign in.
+    </Warning>
+    The dashboard should now be reachable at `DASHBOARD_URL`. Nothing about projects yet — that's next, and only once you've actually created one.
   </Step>
 </Steps>
 
-<Note>
-  With `DOCS_SUBDOMAIN_SEPARATOR=-` set, every project's page in the dashboard shows the exact `cloudflared tunnel route dns` command needed to bring its docs online — no need to track this guide's steps per project, just follow what the dashboard shows.
-</Note>
+## Bringing a project's docs online
+
+Skip this whole section if Total TLS is on — the wildcard route already set up covers every project automatically, forever, with zero further steps, ever. This only applies with Total TLS off, and only after a project actually exists (create it in the dashboard first — this section has nothing to do until then).
+
+Once `DOCS_SUBDOMAIN_SEPARATOR=-` is set and a project exists, its page in the dashboard shows the exact command for it — for example:
+
+```bash
+cloudflared tunnel route dns doctor vortexdb-docs.example.com
+```
+
+Run that, then add a matching line to `deploy/cloudflared/config.yml`:
+
+```yaml
+  - hostname: vortexdb-docs.example.com
+    service: http://caddy:80
+```
+
+And restart `cloudflared` to pick it up:
+
+```bash
+docker compose restart cloudflared
+```
+
+Repeat this (route → config line → restart) once per project.
 
 ## Shared servers
 

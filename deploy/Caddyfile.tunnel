@@ -18,14 +18,14 @@
 	handle @docs_dot {
 		root * /srv/sites/{http.request.host.labels.1}
 		file_server
-		try_files {path} /404.html
+		try_files {path} {path}/index.html {path}.html /404.html
 	}
 
 	@docs_hyphen header_regexp docs_hyphen Host ^(?P<slug>[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)-docs\.{$ORG_DOMAIN}$
 	handle @docs_hyphen {
 		root * /srv/sites/{http.regexp.docs_hyphen.slug}
 		file_server
-		try_files {path} /404.html
+		try_files {path} {path}/index.html {path}.html /404.html
 	}
 
 	handle {

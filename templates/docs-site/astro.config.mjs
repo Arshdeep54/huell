@@ -25,9 +25,12 @@ const accentOverrideCss = nav.accentColor
 :root[data-theme='dark']{--sl-color-accent-high:color-mix(in oklch, var(--sl-color-accent) 60%, white);--sl-color-accent-low:color-mix(in oklch, var(--sl-color-accent) 20%, black);}`
 	: '';
 
+const firstPage = nav.tabs[0]?.groups[0]?.pages[0];
+
 // https://astro.build/config
 export default defineConfig({
 	site: nav.siteUrl,
+	redirects: firstPage ? { '/': `/${firstPage}` } : {},
 	markdown: {
 		remarkPlugins: [remarkMath],
 		rehypePlugins: [rehypeKatex],

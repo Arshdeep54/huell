@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const config = getGithubAppConfig();
   if (!config) {
-    return NextResponse.redirect(new URL("/dashboard/settings/github", request.url));
+    return NextResponse.redirect(new URL("/dashboard/settings/github", process.env.DASHBOARD_URL));
   }
 
   const installUrl = new URL(`https://github.com/apps/${config.slug}/installations/new`);

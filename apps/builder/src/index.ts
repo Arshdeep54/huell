@@ -18,6 +18,9 @@ const { db, schema } = await import("@doctor/db");
 
 const run = promisify(execFile);
 const POLL_INTERVAL_MS = 5000;
+const GITHUB_API_TIMEOUT_MS = 30_000;
+const GIT_TIMEOUT_MS = 120_000;
+const ASTRO_BUILD_TIMEOUT_MS = 600_000;
 
 const dataDir = process.env.DATA_DIR ?? "./data";
 const orgDomain = process.env.ORG_DOMAIN ?? "example.com";
@@ -75,7 +78,7 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     for (const warning of warnings) log.push(`warning: ${warning}`);
 
     rmSync(path.join(templateDir, "dist"), { recursive: true, force: true });
-    log.push(await runStep(path.join(templateDir, "node_modules", ".bin", "astro"), ["build"], templateDir));
+    log.push(await runStep(path.join(templateDir, "node_modules", ".bin", "astro"), ["build"], templateDir, ASTRO_BUILD_TIMEOUT_MS));
 
     const siteDir = path.join(dataDir, "sites", project.slug);
     const siteTmpDir = `${siteDir}.tmp`;
@@ -122,19 +125,20 @@ async function cloneRepo(
   const app = new App({ appId: appConfig.appId, privateKey: appConfig.privateKey });
   const tokenResponse = await app.octokit.rest.apps.createInstallationAccessToken({
     installation_id: installation.installationId,
+    request: { signal: AbortSignal.timeout(GITHUB_API_TIMEOUT_MS) },
   });
   const token = tokenResponse.data.token;
 
   mkdirSync(path.dirname(cloneDir), { recursive: true });
   const cloneUrl = `https://x-access-token:${token}@github.com/${project.repoFullName}.git`;
-  log.push(await runStep("git", ["clone", "--depth", "1", "--branch", project.branch, cloneUrl, cloneDir]));
-  const { stdout: resolvedSha } = await run("git", ["-C", cloneDir, "rev-parse", "HEAD"]);
+  log.push(await runStep("git", ["clone", "--depth", "1", "--branch", project.branch, cloneUrl, cloneDir], undefined, GIT_TIMEOUT_MS));
+  const { stdout: resolvedSha } = await run("git", ["-C", cloneDir, "rev-parse", "HEAD"], { timeout: GIT_TIMEOUT_MS });
 
   return { sourceDocsDir: path.join(cloneDir, project.docsPath), resolvedCommitSha: resolvedSha.trim() };
 }
 
-async function runStep(command: string, args: string[], cwd?: string): Promise<string> {
-  const { stdout, stderr } = await run(command, args, { cwd });
+async function runStep(command: string, args: string[], cwd?: string, timeout = GIT_TIMEOUT_MS): Promise<string> {
+  const { stdout, stderr } = await run(command, args, { cwd, timeout });
   return [`$ ${command} ${args.join(" ")}`, stdout, stderr].filter(Boolean).join("\n");
 }
 

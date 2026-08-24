@@ -15,7 +15,8 @@
         "group": "Guides",
         "pages": [
           "guides/migrating-existing-docs",
-          "guides/connecting-a-project"
+          "guides/connecting-a-project",
+          "guides/tunnel-deployment"
         ]
       }
     ]

@@ -15,6 +15,10 @@ All configuration lives in `.env` at the repo root. `.env.example` has the full 
   The full origin the dashboard itself is served at, e.g. `https://docs.example.com`.
 </ParamField>
 
+<ParamField body="DASHBOARD_HOST" type="string">
+  Same host as `DASHBOARD_URL`, without the scheme. Only read by `deploy/Caddyfile.tunnel` — see [Tunnel deployment](/guides/tunnel-deployment). Leave unset if you're not using that path.
+</ParamField>
+
 ## Auth
 
 <ParamField body="GOOGLE_CLIENT_ID" type="string" required>
@@ -27,6 +31,10 @@ All configuration lives in `.env` at the repo root. `.env.example` has the full 
 
 <ParamField body="AUTH_SECRET" type="string" required>
   Random 32+ byte secret used to sign session cookies. Generate one with `openssl rand -base64 32`.
+</ParamField>
+
+<ParamField body="AUTH_URL" type="string">
+  Same value as `DASHBOARD_URL`. Recommended whenever Doctor runs behind any reverse proxy or tunnel — origin auto-detection from request headers isn't always reliable there, and an unset `AUTH_URL` can send sign-in redirects to the wrong host.
 </ParamField>
 
 ## GitHub App

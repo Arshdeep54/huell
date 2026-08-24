@@ -34,6 +34,18 @@ services:
     depends_on:
       - app
 
+  # See docs/guides/tunnel-deployment.mdx. Opt-in: docker compose --profile tunnel up
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./deploy/cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - caddy
+    profiles:
+      - tunnel
+
 volumes:
   caddy_data:
   caddy_config:

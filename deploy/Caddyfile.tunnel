@@ -1,0 +1,27 @@
+# Tunnel-mode variant of Caddyfile — used when Caddy sits behind an
+# outbound tunnel (Cloudflare Tunnel, etc.) that already terminates
+# public TLS. Caddy only ever receives plain HTTP from the tunnel, and
+# has no ACME path of its own since the server isn't publicly reachable
+# — so automatic HTTPS and on-demand TLS are both off here.
+
+{
+	auto_https off
+}
+
+:80 {
+	@dashboard host {$DASHBOARD_HOST}
+	handle @dashboard {
+		reverse_proxy app:3000
+	}
+
+	@docs host *.docs.{$ORG_DOMAIN}
+	handle @docs {
+		root * /srv/sites/{http.request.host.labels.1}
+		file_server
+		try_files {path} /404.html
+	}
+
+	handle {
+		respond 404
+	}
+}

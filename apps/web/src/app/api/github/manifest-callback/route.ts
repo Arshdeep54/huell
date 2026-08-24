@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
 
   const code = request.nextUrl.searchParams.get("code");
   if (!code) {
-    return NextResponse.redirect(new URL("/dashboard/settings/github?error=missing_code", request.url));
+    return NextResponse.redirect(new URL("/dashboard/settings/github?error=missing_code", process.env.DASHBOARD_URL));
   }
 
   const response = await fetch(`https://api.github.com/app-manifests/${code}/conversions`, {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!response.ok) {
-    return NextResponse.redirect(new URL("/dashboard/settings/github?error=exchange_failed", request.url));
+    return NextResponse.redirect(new URL("/dashboard/settings/github?error=exchange_failed", process.env.DASHBOARD_URL));
   }
 
   const app = (await response.json()) as {
@@ -52,5 +52,5 @@ export async function GET(request: NextRequest) {
     })
     .run();
 
-  return NextResponse.redirect(new URL("/dashboard/settings/github", request.url));
+  return NextResponse.redirect(new URL("/dashboard/settings/github", process.env.DASHBOARD_URL));
 }

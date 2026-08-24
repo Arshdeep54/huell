@@ -29,5 +29,5 @@ export async function GET(request: NextRequest) {
     })
     .run();
 
-  return NextResponse.redirect(new URL(`/dashboard/projects/${project.slug}/select-repo`, request.url));
+  return NextResponse.redirect(new URL(`/dashboard/projects/${project.slug}/select-repo`, process.env.DASHBOARD_URL));
 }

@@ -19,6 +19,10 @@ All configuration lives in `.env` at the repo root. `.env.example` has the full 
   Same host as `DASHBOARD_URL`, without the scheme. Only read by `deploy/Caddyfile.tunnel` — see [Tunnel deployment](/guides/tunnel-deployment). Leave unset if you're not using that path.
 </ParamField>
 
+<ParamField body="CADDYFILE" type="string" default="Caddyfile">
+  Which file under `deploy/` Caddy uses. Set to `Caddyfile.tunnel` for tunnel deployments. Leave unset otherwise — never overwrite the tracked `deploy/Caddyfile` directly, that creates a local change `git pull` will conflict with.
+</ParamField>
+
 <ParamField body="DOCS_SUBDOMAIN_SEPARATOR" type="string" default=".">
   `.` gives every project `<slug>.docs.<ORG_DOMAIN>`, coverable by one wildcard DNS route. Set to `-` for `<slug>-docs.<ORG_DOMAIN>` instead — needed on a tunnel without wildcard certificate coverage, where each project needs its own exact route. See [Tunnel deployment](/guides/tunnel-deployment).
 </ParamField>

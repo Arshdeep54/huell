@@ -85,13 +85,16 @@ These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-
     ```bash
     DASHBOARD_HOST=docs.example.com
     AUTH_URL=https://docs.example.com
+    CADDYFILE=Caddyfile.tunnel
     # only if Total TLS is off — omit entirely if it's on
     DOCS_SUBDOMAIN_SEPARATOR=-
     ```
+    <Note>
+      `CADDYFILE` swaps which Caddy config gets used, without touching the tracked `deploy/Caddyfile` — so `git pull` never conflicts with a local override. Don't `cp` the tunnel Caddyfile over the real one.
+    </Note>
   </Step>
   <Step title="Start everything">
     ```bash
-    cp deploy/Caddyfile.tunnel deploy/Caddyfile
     docker compose --profile tunnel up -d
     ```
   </Step>

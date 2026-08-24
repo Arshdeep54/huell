@@ -2,7 +2,7 @@
 # runtime (not just its own package): it clones repos with git, and every
 # build symlinks templates/docs-site's installed node_modules.
 FROM node:22-bookworm-slim AS base
-RUN corepack enable && apt-get update && apt-get install -y --no-install-recommends git python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && apt-get update && apt-get install -y --no-install-recommends ca-certificates git python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps
 WORKDIR /repo

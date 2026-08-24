@@ -21,6 +21,7 @@ const POLL_INTERVAL_MS = 5000;
 
 const dataDir = process.env.DATA_DIR ?? "./data";
 const orgDomain = process.env.ORG_DOMAIN ?? "example.com";
+const docsSubdomainSeparator = process.env.DOCS_SUBDOMAIN_SEPARATOR === "-" ? "-" : ".";
 const templateDir = fileURLToPath(new URL("../../../templates/docs-site", import.meta.url));
 
 async function nextQueuedBuild() {
@@ -68,7 +69,7 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     const { warnings } = migrateDocs({
       sourceDocsDir,
       destSiteDir: templateDir,
-      siteUrl: `https://${project.slug}.docs.${orgDomain}`,
+      siteUrl: `https://${project.slug}${docsSubdomainSeparator}docs.${orgDomain}`,
       projectName: project.name,
     });
     for (const warning of warnings) log.push(`warning: ${warning}`);

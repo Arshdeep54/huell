@@ -3,7 +3,15 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useTheme } from "next-themes";
 
-export function ThemeToggle({ className, style }: { className?: string; style?: CSSProperties }) {
+export function ThemeToggle({
+  className,
+  style,
+  iconOnly,
+}: {
+  className?: string;
+  style?: CSSProperties;
+  iconOnly?: boolean;
+}) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -20,7 +28,7 @@ export function ThemeToggle({ className, style }: { className?: string; style?: 
         display: "flex",
         alignItems: "center",
         gap: 9,
-        padding: "8px 9px",
+        padding: iconOnly ? 8 : "8px 9px",
         borderRadius: 8,
         border: "1px solid var(--line)",
         background: "transparent",
@@ -39,7 +47,7 @@ export function ThemeToggle({ className, style }: { className?: string; style?: 
           flex: "none",
         }}
       />
-      {isLight ? "Light" : "Dark"}
+      {!iconOnly && (isLight ? "Light" : "Dark")}
     </button>
   );
 }

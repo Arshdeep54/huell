@@ -51,7 +51,8 @@ export default async function LoginPage({
           <div style={{ font: "600 17px/1 'IBM Plex Sans', sans-serif", letterSpacing: "-0.01em" }}>Doctor</div>
         </div>
 
-        <div style={{ marginTop: "auto", maxWidth: 480 }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <div style={{ maxWidth: 480 }}>
           <div
             style={{
               font: "500 11px/1 'IBM Plex Mono', monospace",
@@ -133,14 +134,20 @@ export default async function LoginPage({
             </div>
           ))}
         </div>
-
-        <div style={{ marginTop: 40, font: "400 12px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
-          push to a branch &#183; get a live, searchable docs site
         </div>
       </div>
 
-      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: "64px 40px" }}>
-        <ThemeToggle style={{ position: "absolute", top: 20, right: 20 }} />
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "64px 40px",
+          background: "radial-gradient(60% 50% at 50% 45%, var(--bg3), var(--bg) 70%)",
+        }}
+      >
+        <ThemeToggle iconOnly style={{ position: "absolute", top: 20, right: 20 }} />
         <div style={{ width: "100%", maxWidth: 392, display: "flex", flexDirection: "column", gap: 18 }}>
           <div
             style={{

@@ -32,7 +32,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         .where(eq(schema.invites.email, user.email))
         .get();
 
-      if (!isFirstMember && !pendingInvite) return false;
+      if (!isFirstMember && !pendingInvite) {
+        db.insert(schema.waitlist)
+          .values({
+            id: randomUUID(),
+            email: user.email,
+            name: user.name ?? user.email,
+            avatarUrl: user.image ?? null,
+            createdAt: new Date(),
+          })
+          .onConflictDoNothing()
+          .run();
+        return "/login?waitlisted=1";
+      }
 
       const memberId = randomUUID();
       db.insert(schema.members)

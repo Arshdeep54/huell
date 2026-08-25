@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "@huell/db";
 import { requireOrgAdmin } from "@/lib/session";
-import { inviteMember, removeMember, revokeInvite } from "@/lib/actions";
+import { approveWaitlistEntry, inviteMember, rejectWaitlistEntry, removeMember, revokeInvite } from "@/lib/actions";
 import { formatRelativeTime } from "@/lib/format";
 
 function initialsOf(name: string) {
@@ -22,6 +22,7 @@ export default async function MembersPage() {
     .leftJoin(schema.projects, eq(schema.invites.projectId, schema.projects.id))
     .all()
     .filter((row) => !row.invite.redeemedAt);
+  const waitlist = db.select().from(schema.waitlist).all();
 
   return (
     <div>
@@ -67,6 +68,88 @@ export default async function MembersPage() {
           </button>
         </form>
       </div>
+
+      {waitlist.length > 0 && (
+        <div>
+          <h2 style={{ margin: "28px 0 0", font: "600 14px/1.2 'IBM Plex Sans', sans-serif" }}>
+            Waitlist <span style={{ color: "var(--fg3)", fontWeight: 500 }}>({waitlist.length})</span>
+          </h2>
+          <p style={{ margin: "6px 0 0", font: "400 12.5px/1.5 'IBM Plex Sans', sans-serif", color: "var(--fg2)" }}>
+            Signed in with Google but weren't already a member or invited — review before they get access.
+          </p>
+          <div
+            style={{
+              marginTop: 14,
+              border: "1px solid var(--line)",
+              borderRadius: 14,
+              background: "var(--bg2)",
+              boxShadow: "var(--dc-shadow)",
+              overflow: "hidden",
+            }}
+          >
+            {waitlist.map((entry) => (
+              <div
+                key={entry.id}
+                style={{
+                  padding: "14px 20px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 11,
+                  borderBottom: "1px solid var(--line)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: "50%",
+                    background: "var(--bg3)",
+                    color: "var(--fg2)",
+                    display: "grid",
+                    placeItems: "center",
+                    font: "600 11px/1 'IBM Plex Mono', monospace",
+                    flex: "none",
+                  }}
+                >
+                  {initialsOf(entry.name)}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ font: "500 13px/1.2 'IBM Plex Sans', sans-serif" }}>{entry.name}</div>
+                  <div style={{ font: "400 11px/1.4 'IBM Plex Mono', monospace", color: "var(--fg3)", marginTop: 3 }}>
+                    {entry.email}
+                  </div>
+                </div>
+                <span style={{ marginLeft: "auto", font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+                  requested {formatRelativeTime(entry.createdAt)}
+                </span>
+                <form action={approveWaitlistEntry}>
+                  <input type="hidden" name="waitlistId" value={entry.id} />
+                  <button
+                    type="submit"
+                    style={{
+                      height: 30,
+                      padding: "0 12px",
+                      border: "none",
+                      borderRadius: 8,
+                      background: "var(--acc)",
+                      color: "var(--accfg)",
+                      font: "600 11.5px/1 'IBM Plex Sans', sans-serif",
+                    }}
+                  >
+                    Approve
+                  </button>
+                </form>
+                <form action={rejectWaitlistEntry}>
+                  <input type="hidden" name="waitlistId" value={entry.id} />
+                  <button type="submit" className="hover-bad" style={{ border: "none", background: "transparent", color: "var(--fg3)", font: "500 11.5px/1 'IBM Plex Sans', sans-serif" }}>
+                    Reject
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div
         style={{

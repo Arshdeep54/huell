@@ -13,7 +13,7 @@ const EXAMPLE_ACTIVITY = [
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; waitlisted?: string }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
@@ -242,9 +242,37 @@ export default async function LoginPage({
 async function LoginError({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; waitlisted?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, waitlisted } = await searchParams;
+
+  if (waitlisted) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          gap: 11,
+          alignItems: "flex-start",
+          padding: "13px 14px",
+          borderRadius: 10,
+          background: "var(--oksoft)",
+          border: "1px solid var(--ok)",
+        }}
+      >
+        <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--ok)", marginTop: 5, flex: "none" }} />
+        <div>
+          <div style={{ font: "600 13px/1.3 'IBM Plex Sans', sans-serif", color: "var(--fg)" }}>
+            Request received
+          </div>
+          <div style={{ font: "400 12.5px/1.5 'IBM Plex Sans', sans-serif", color: "var(--fg2)", marginTop: 3 }}>
+            An org admin needs to approve your access before you can sign in — you'll be able to try again once
+            they do.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!error) return null;
   return (
     <div

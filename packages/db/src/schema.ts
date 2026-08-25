@@ -9,6 +9,17 @@ export const members = sqliteTable("members", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
+// Someone who signed in with Google but wasn't already a member and had no
+// pending invite — instead of being bounced outright, they land here for an
+// org admin to approve (becomes a real member) or reject (row just deleted).
+export const waitlist = sqliteTable("waitlist", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  avatarUrl: text("avatar_url"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
 // Single-row table (id is always "1"): the GitHub App identity for this instance,
 // populated either via the in-dashboard manifest flow or by hand in .env as a fallback.
 export const githubAppConfig = sqliteTable("github_app_config", {

@@ -16,7 +16,7 @@ export function validateDocs(sourceDocsDir: string): { valid: boolean; errors: s
     return { valid: false, errors: [`No docs.json found in ${sourceDocsDir}`], warnings: [] };
   }
 
-  const scratchDir = mkdtempSync(path.join(tmpdir(), "huell-validate-"));
+  const scratchDir = mkdtempSync(path.join(tmpdir(), "huellup-validate-"));
   try {
     const { warnings } = migrateDocs({
       sourceDocsDir,

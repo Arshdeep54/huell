@@ -8,7 +8,7 @@ import { runMcp } from "./commands/mcp";
 const program = new Command();
 
 program
-  .name("huell")
+  .name("huellup")
   .description("Author, validate, and preview Huell-format docs (docs.json + .mdx)")
   .version("0.1.0");
 

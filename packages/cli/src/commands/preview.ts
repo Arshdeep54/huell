@@ -5,10 +5,10 @@ import { fileURLToPath } from "node:url";
 import { migrateDocs } from "@huell/docs-core";
 
 // Resolves the docs-site template this CLI ships against. Inside this
-// monorepo (dev, or `pnpm --filter huell dev`) that's the real
+// monorepo (dev, or `pnpm --filter huellup dev`) that's the real
 // templates/docs-site workspace package, already `pnpm install`-ed.
 //
-// TODO(publish): a standalone `npm install -g huell` doesn't have this
+// TODO(publish): a standalone `npm install -g huellup` doesn't have this
 // monorepo around it — before actually publishing, bundle a copy of
 // templates/docs-site into this package's own `files` and point this at that
 // bundled copy instead. Nothing else in this command needs to change.
@@ -16,15 +16,15 @@ function resolveTemplateDir(): string {
   const monorepoTemplate = fileURLToPath(new URL("../../../../templates/docs-site", import.meta.url));
   if (existsSync(path.join(monorepoTemplate, "package.json"))) return monorepoTemplate;
   throw new Error(
-    "Could not find the docs-site template. This build of huell doesn't yet bundle it standalone — " +
-      "run it from within the Huell monorepo (pnpm --filter huell dev preview) for now.",
+    "Could not find the docs-site template. This build of huellup doesn't yet bundle it standalone — " +
+      "run it from within the Huell monorepo (pnpm --filter huellup dev preview) for now.",
   );
 }
 
 export function runPreview(targetDir: string) {
   const docsDir = path.resolve(targetDir);
   if (!existsSync(path.join(docsDir, "docs.json"))) {
-    console.error(`No docs.json found in ${docsDir}. Run "huell init" first.`);
+    console.error(`No docs.json found in ${docsDir}. Run "huellup init" first.`);
     process.exitCode = 1;
     return;
   }

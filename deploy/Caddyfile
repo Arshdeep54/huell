@@ -1,4 +1,4 @@
-# Doctor's reverse proxy: TLS termination + routing only. All routing logic
+# Huell's reverse proxy: TLS termination + routing only. All routing logic
 # that needs to be correct (which subdomain maps to which project, whether a
 # hostname is legitimate) lives in the Next.js app, not here — Caddy just
 # proxies the dashboard and serves static files for project docs sites.

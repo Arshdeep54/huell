@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { requireSession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {

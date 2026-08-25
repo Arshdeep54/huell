@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-const WHAT_IS_DOCTOR_URL = "https://doctor-docs.hiesenbug.dev";
+const WHAT_IS_HUELL_URL = "https://huell-docs.hiesenbug.dev";
 
 const EXAMPLE_ACTIVITY = [
   { name: "acme-docs", detail: "deployed · 128 pages", when: "12m ago", state: "live" as const },
@@ -48,7 +48,7 @@ export default async function LoginPage({
           >
             D
           </div>
-          <div style={{ font: "600 17px/1 'IBM Plex Sans', sans-serif", letterSpacing: "-0.01em" }}>Doctor</div>
+          <div style={{ font: "600 17px/1 'IBM Plex Sans', sans-serif", letterSpacing: "-0.01em" }}>Huell</div>
         </div>
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
@@ -224,8 +224,8 @@ export default async function LoginPage({
               }}
             >
               <span>No password, no signup form.</span>
-              <a href={WHAT_IS_DOCTOR_URL} target="_blank" rel="noreferrer">
-                What is Doctor?
+              <a href={WHAT_IS_HUELL_URL} target="_blank" rel="noreferrer">
+                What is Huell?
               </a>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 
 // Caddy's on-demand TLS calls this before issuing a certificate for any
 // hostname — without it, anyone could point DNS at this server and get a

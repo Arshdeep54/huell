@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Webhooks } from "@octokit/webhooks";
 import { eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { getGithubAppConfig } from "@/lib/github-app";
 
 export async function POST(request: NextRequest) {

@@ -1,6 +1,6 @@
 ---
 title: Tunnel deployment
-description: Deploying Doctor on a server with no public IP — behind NAT, a campus network, or a corporate firewall.
+description: Deploying Huell on a server with no public IP — behind NAT, a campus network, or a corporate firewall.
 ---
 
 [Installation](/getting-started/installation) assumes your server has a public IP with 80/443 reachable, so Caddy can get its own certificates automatically. Plenty of real servers don't have that — a machine on a university lab network, an office server behind NAT, anything without direct inbound access. This page is for that case.
@@ -22,7 +22,7 @@ Caddy normally terminates TLS itself, requesting certificates directly from Let'
   </Card>
 </CardGroup>
 
-These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/) since it's free with no bandwidth limits, but the same shape works with any outbound tunnel — the only Doctor-specific pieces are `deploy/Caddyfile.tunnel` and the optional `cloudflared` service in `docker-compose.yml`.
+These docs use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/) since it's free with no bandwidth limits, but the same shape works with any outbound tunnel — the only Huell-specific pieces are `deploy/Caddyfile.tunnel` and the optional `cloudflared` service in `docker-compose.yml`.
 
 ## Setup
 
@@ -43,17 +43,17 @@ This section gets the dashboard itself live. It's all you need to do up front �
   <Step title="Authenticate and create a tunnel">
     ```bash
     cloudflared tunnel login
-    cloudflared tunnel create doctor
+    cloudflared tunnel create huell
     ```
     The login step prints a URL — open it in a browser on any device and authorize your domain. `tunnel create` writes credentials to `~/.cloudflared/`, and prints a **tunnel ID** you'll need in a couple steps — keep it visible.
   </Step>
   <Step title="Check whether you have Total TLS">
-    Cloudflare's free certificate covers your domain plus one subdomain level (`*.example.com`) — Doctor's project URLs (`<slug>.docs.example.com`) are one level deeper than that, so they need **Total TLS** (SSL/TLS → Edge Certificates → Total TLS in the Cloudflare dashboard). Many orgs already have this on — check there first. If it's not on and your plan doesn't include it for free, it's a paid add-on. This decides which of the two `config.yml` versions you write two steps down — note which one applies to you before continuing.
+    Cloudflare's free certificate covers your domain plus one subdomain level (`*.example.com`) — Huell's project URLs (`<slug>.docs.example.com`) are one level deeper than that, so they need **Total TLS** (SSL/TLS → Edge Certificates → Total TLS in the Cloudflare dashboard). Many orgs already have this on — check there first. If it's not on and your plan doesn't include it for free, it's a paid add-on. This decides which of the two `config.yml` versions you write two steps down — note which one applies to you before continuing.
   </Step>
   <Step title="Route the dashboard's hostname">
     The only DNS route you need before starting anything — this is not project-specific:
     ```bash
-    cloudflared tunnel route dns doctor docs.example.com
+    cloudflared tunnel route dns huell docs.example.com
     ```
   </Step>
   <Step title="Place tunnel credentials where Docker can read them">
@@ -116,7 +116,7 @@ This section gets the dashboard itself live. It's all you need to do up front �
   <Step title="Build, migrate, and start">
     ```bash
     docker compose build
-    docker compose run --rm worker pnpm --filter @doctor/db migrate
+    docker compose run --rm worker pnpm --filter @huell/db migrate
     docker compose --profile tunnel up -d
     ```
     <Warning>
@@ -133,7 +133,7 @@ Skip this whole section if Total TLS is on — the wildcard route already set up
 Once `DOCS_SUBDOMAIN_SEPARATOR=-` is set and a project exists, its page in the dashboard shows the exact command for it — for example:
 
 ```bash
-cloudflared tunnel route dns doctor vortexdb-docs.example.com
+cloudflared tunnel route dns huell vortexdb-docs.example.com
 ```
 
 Run that, then add a matching line to `deploy/cloudflared/config.yml`:

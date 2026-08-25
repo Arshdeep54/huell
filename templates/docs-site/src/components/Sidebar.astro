@@ -1,0 +1,25 @@
+---
+import MobileMenuFooter from 'virtual:starlight/components/MobileMenuFooter';
+import SidebarPersister from '@astrojs/starlight/components/SidebarPersister.astro';
+import SidebarSublist from '@astrojs/starlight/components/SidebarSublist.astro';
+import nav from '../../nav.config.json';
+
+const { sidebar } = Astro.locals.starlightRoute;
+
+// astro.config.mjs's `sidebar` wraps each top-level tab's groups in a group of
+// its own (label = tab.label) — that's needed to build the full sidebar tree,
+// but showing every tab's groups at once duplicates the top tab bar. The top
+// tabs already pick the tab, so only that tab's own groups belong in the sidebar.
+const currentPath = Astro.url.pathname.replace(/^\/|\/$/g, '');
+const activeTab = nav.tabs.find((tab) => tab.groups.some((group) => group.pages.includes(currentPath))) ?? nav.tabs[0];
+const activeTabGroup = sidebar.find((entry) => entry.type === 'group' && entry.label === activeTab?.label);
+const sublist = activeTabGroup && activeTabGroup.type === 'group' ? activeTabGroup.entries : sidebar;
+---
+
+<SidebarPersister>
+	<SidebarSublist sublist={sublist} />
+</SidebarPersister>
+
+<div class="md:sl-hidden">
+	<MobileMenuFooter />
+</div>

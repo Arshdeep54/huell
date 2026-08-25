@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { requireSession } from "@/lib/session";
 import { formatRelativeTime } from "@/lib/format";
 

@@ -1,18 +1,29 @@
 {
-  "name": "doctor-docs",
+  "name": "huell-docs",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Author, validate, and preview Doctor-format docs (docs.json + .mdx) — plus an MCP server so AI agents can write them correctly.",
-  "bin": {
-    "doctor-docs": "./bin/doctor-docs.js"
+  "description": "Author, validate, and preview Huell-format docs (docs.json + .mdx) — plus an MCP server so AI agents can write them correctly.",
+  "keywords": ["docs", "documentation", "starlight", "astro", "mcp", "model-context-protocol"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Arshdeep54/huell",
+    "directory": "packages/cli"
   },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "huell-docs": "./bin/huell-docs.js"
+  },
+  "files": ["bin", "dist"],
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "tsc"
   },
   "dependencies": {
-    "@doctor/docs-core": "workspace:*",
+    "@huell/docs-core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.9.0",
     "commander": "^13.1.0",
     "zod": "^3.24.1"

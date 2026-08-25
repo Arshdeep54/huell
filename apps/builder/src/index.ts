@@ -5,15 +5,15 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { App } from "octokit";
 import { asc, eq } from "drizzle-orm";
-import { copyDir, migrateDocs } from "@doctor/docs-core";
+import { copyDir, migrateDocs } from "@huell/docs-core";
 import { getGithubAppConfig } from "./github-app-config";
 
-// tsx/node don't auto-load .env — do it before importing @doctor/db, since
+// tsx/node don't auto-load .env — do it before importing @huell/db, since
 // its module body reads DATA_DIR at import time. Opt-in: absent in Docker,
 // where compose injects env vars directly.
 const rootEnvPath = fileURLToPath(new URL("../../../.env", import.meta.url));
 if (existsSync(rootEnvPath)) process.loadEnvFile(rootEnvPath);
-const { db, schema } = await import("@doctor/db");
+const { db, schema } = await import("@huell/db");
 
 const run = promisify(execFile);
 const POLL_INTERVAL_MS = 5000;
@@ -218,7 +218,7 @@ function failBuild(buildId: string, log: string) {
 }
 
 async function main() {
-  console.log("Doctor build worker started.");
+  console.log("Huell build worker started.");
   while (true) {
     const build = await nextQueuedBuild();
     if (build) {

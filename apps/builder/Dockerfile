@@ -10,7 +10,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/builder/package.json apps/builder/package.json
 COPY packages/db/package.json packages/db/package.json
 COPY templates/docs-site/package.json templates/docs-site/package.json
-RUN pnpm install --frozen-lockfile --filter @doctor/builder --filter @doctor/db --filter @doctor/docs-site-template
+RUN pnpm install --frozen-lockfile --filter @huell/builder --filter @huell/db --filter @huell/docs-site-template
 
 FROM base AS runtime
 WORKDIR /repo

@@ -1,14 +1,14 @@
 {
-  "name": "doctor",
+  "name": "huell",
   "private": true,
   "packageManager": "pnpm@10.32.0",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "dev:web": "pnpm --filter @doctor/web dev",
-    "build:web": "pnpm --filter @doctor/web build",
-    "db:migrate": "pnpm --filter @doctor/db migrate",
-    "worker": "pnpm --filter @doctor/builder start"
+    "dev:web": "pnpm --filter @huell/web dev",
+    "build:web": "pnpm --filter @huell/web build",
+    "db:migrate": "pnpm --filter @huell/db migrate",
+    "worker": "pnpm --filter @huell/builder start"
   }
 }

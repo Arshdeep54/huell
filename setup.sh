@@ -24,12 +24,12 @@ echo "Building images..."
 docker compose build
 
 echo "Running database migrations..."
-docker compose run --rm worker pnpm --filter @doctor/db migrate
+docker compose run --rm worker pnpm --filter @huell/db migrate
 
-echo "Starting Doctor..."
+echo "Starting Huell..."
 docker compose up -d
 
 echo
-echo "Doctor is starting. Once DNS for your domain (and *.docs.<ORG_DOMAIN>) points at this"
+echo "Huell is starting. Once DNS for your domain (and *.docs.<ORG_DOMAIN>) points at this"
 echo "server, the dashboard will be reachable at the DASHBOARD_URL set in .env."
 echo "Sign in there with Google — the first person to sign in becomes the org admin."

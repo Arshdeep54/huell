@@ -1,4 +1,4 @@
-import { db, schema, type ProjectRole } from "@doctor/db";
+import { db, schema, type ProjectRole } from "@huell/db";
 import { and, eq } from "drizzle-orm";
 
 const roleRank: Record<ProjectRole, number> = { viewer: 0, editor: 1, owner: 2 };

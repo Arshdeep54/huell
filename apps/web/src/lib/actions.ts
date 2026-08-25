@@ -7,7 +7,7 @@ import AdmZip from "adm-zip";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
-import { db, schema, type ProjectRole } from "@doctor/db";
+import { db, schema, type ProjectRole } from "@huell/db";
 import { requireOrgAdmin, requireSession } from "@/lib/session";
 import { hasProjectRole } from "@/lib/permissions";
 import { signOut } from "@/auth";

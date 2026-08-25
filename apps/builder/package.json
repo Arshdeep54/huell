@@ -1,5 +1,5 @@
 {
-  "name": "@doctor/builder",
+  "name": "@huell/builder",
   "private": true,
   "type": "module",
   "scripts": {
@@ -7,8 +7,8 @@
     "migrate-docs": "tsx src/cli.ts"
   },
   "dependencies": {
-    "@doctor/db": "workspace:*",
-    "@doctor/docs-core": "workspace:*",
+    "@huell/db": "workspace:*",
+    "@huell/docs-core": "workspace:*",
     "drizzle-orm": "^0.38.4",
     "octokit": "^4.1.2"
   },

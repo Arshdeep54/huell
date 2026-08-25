@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 
 export type GithubAppConfig = {
   appId: number;

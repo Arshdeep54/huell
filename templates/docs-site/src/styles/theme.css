@@ -51,6 +51,15 @@
 
 .sidebar-content a[aria-current='page'] {
 	font-weight: 600;
+	color: var(--sl-color-black);
+}
+
+/* Starlight sizes the site-title logo off --sl-nav-height, assuming that var
+   equals one header row. The tab row (Header.astro) grows --sl-nav-height to
+   fit a second row, which would otherwise balloon the logo along with it — so
+   pin it to the original single-row size regardless of how tall the header is. */
+.site-title img {
+	height: 2.5rem;
 }
 
 .starlight-aside {

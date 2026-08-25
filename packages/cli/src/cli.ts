@@ -8,8 +8,8 @@ import { runMcp } from "./commands/mcp";
 const program = new Command();
 
 program
-  .name("doctor-docs")
-  .description("Author, validate, and preview Doctor-format docs (docs.json + .mdx)")
+  .name("huell-docs")
+  .description("Author, validate, and preview Huell-format docs (docs.json + .mdx)")
   .version("0.1.0");
 
 program

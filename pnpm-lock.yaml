@@ -10,10 +10,10 @@ importers:
 
   apps/builder:
     dependencies:
-      '@doctor/db':
+      '@huell/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@doctor/docs-core':
+      '@huell/docs-core':
         specifier: workspace:*
         version: link:../../packages/docs-core
       drizzle-orm:
@@ -38,7 +38,7 @@ importers:
       '@base-ui/react':
         specifier: ^1.7.0
         version: 1.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@doctor/db':
+      '@huell/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@octokit/webhooks':
@@ -123,7 +123,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@doctor/docs-core':
+      '@huell/docs-core':
         specifier: workspace:*
         version: link:../docs-core
       '@modelcontextprotocol/sdk':

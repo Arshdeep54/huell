@@ -42,7 +42,7 @@ The dashboard's own domain is the simple case — Caddy requests a certificate f
 Project subdomains aren't known ahead of time — a new one exists the moment an admin creates a project. Caddy handles this with **on-demand TLS**: instead of a fixed list of hostnames to cover, it asks a small endpoint in the dashboard, *"is this hostname real?"*, the first time anyone visits it, and only issues a certificate if the answer is yes.
 
 <Warning>
-  Without that check, anyone who pointed DNS at your server would be able to get a free, valid certificate minted through your infrastructure for a domain they don't actually run through Doctor. The check is what keeps on-demand TLS safe to leave on.
+  Without that check, anyone who pointed DNS at your server would be able to get a free, valid certificate minted through your infrastructure for a domain they don't actually run through Huell. The check is what keeps on-demand TLS safe to leave on.
 </Warning>
 
 That check is a single route — `apps/web/src/app/api/caddy/ask-domain/route.ts` — and it does exactly one thing: strip the project suffix off the requested hostname, look up whether a project with that slug actually exists, and answer yes or no. Everything that decides whether a hostname is legitimate lives in that one route, in the app — Caddy itself stays dumb about projects, members, or anything else in the database.

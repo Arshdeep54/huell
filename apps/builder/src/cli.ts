@@ -1,11 +1,11 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { copyDir, migrateDocs } from "@doctor/docs-core";
+import { copyDir, migrateDocs } from "@huell/docs-core";
 
 // Standalone migration preview: copies the docs-site template, then converts a
 // A docs/ folder into it, so it can be built and eyeballed on its own.
 //
-// Usage: pnpm --filter @doctor/builder migrate-docs <sourceDocsDir> <destDir> [projectName]
+// Usage: pnpm --filter @huell/builder migrate-docs <sourceDocsDir> <destDir> [projectName]
 
 const [sourceDocsDir, destDir, projectName] = process.argv.slice(2);
 

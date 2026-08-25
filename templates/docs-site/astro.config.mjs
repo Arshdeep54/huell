@@ -20,10 +20,25 @@ const sidebar = nav.tabs.map((tab) => ({
 
 // A project's docs.json can set colors.primary — when present, derive the
 // full accent scale from that one color instead of the template's default indigo.
+// !important is required here: this style tag and theme.css's own :root rule
+// have identical specificity, and customCss loads after `head` in Starlight's
+// output, so without !important theme.css's hardcoded accent silently wins.
 const accentOverrideCss = nav.accentColor
-	? `:root{--sl-color-accent:${nav.accentColor};--sl-color-accent-high:color-mix(in oklch, var(--sl-color-accent) 70%, black);--sl-color-accent-low:color-mix(in oklch, var(--sl-color-accent) 15%, white);}
-:root[data-theme='dark']{--sl-color-accent-high:color-mix(in oklch, var(--sl-color-accent) 60%, white);--sl-color-accent-low:color-mix(in oklch, var(--sl-color-accent) 20%, black);}`
+	? `:root{--sl-color-accent:${nav.accentColor} !important;--sl-color-accent-high:color-mix(in oklch, var(--sl-color-accent) 70%, black) !important;--sl-color-accent-low:color-mix(in oklch, var(--sl-color-accent) 15%, white) !important;}
+:root[data-theme='dark']{--sl-color-accent-high:color-mix(in oklch, var(--sl-color-accent) 60%, white) !important;--sl-color-accent-low:color-mix(in oklch, var(--sl-color-accent) 20%, black) !important;}`
 	: '';
+
+// A project's docs.json can also set its own page/nav/sidebar background —
+// override all three together so the whole shell reads as one flat color,
+// rather than just the page background changing on its own.
+const backgroundOverrideCss = [
+	nav.backgroundColor?.light
+		? `:root{--sl-color-bg:${nav.backgroundColor.light};--sl-color-bg-nav:${nav.backgroundColor.light};--sl-color-bg-sidebar:${nav.backgroundColor.light};}`
+		: '',
+	nav.backgroundColor?.dark
+		? `:root[data-theme='dark']{--sl-color-bg:${nav.backgroundColor.dark};--sl-color-bg-nav:${nav.backgroundColor.dark};--sl-color-bg-sidebar:${nav.backgroundColor.dark};}`
+		: '',
+].join('\n');
 
 const firstPage = nav.tabs[0]?.groups[0]?.pages[0];
 
@@ -40,21 +55,25 @@ export default defineConfig({
 			title: nav.name,
 			sidebar,
 			// A project's docs.json can set its own logo/favicon; when it doesn't,
-			// fall back to Doctor's own default mark rather than showing no logo at all.
+			// fall back to Huell's own default mark rather than showing no logo at all.
+			// A project's own logo replaces the site-title text (it's usually a full
+			// wordmark lockup already, like VortexDB's) — the icon-only default doesn't,
+			// since it has no text of its own and needs the title for identification.
 			logo: nav.logo
 				? typeof nav.logo === 'string'
-					? { src: nav.logo }
-					: { light: nav.logo.light, dark: nav.logo.dark }
+					? { src: nav.logo, replacesTitle: true }
+					: { light: nav.logo.light, dark: nav.logo.dark, replacesTitle: true }
 				: { light: './src/assets/branding/default-light.svg', dark: './src/assets/branding/default-dark.svg' },
 			favicon: nav.favicon,
 			components: {
 				Header: './src/components/Header.astro',
 				Head: './src/components/Head.astro',
+				Sidebar: './src/components/Sidebar.astro',
 			},
 			customCss: ['./src/styles/theme.css'],
-			head: accentOverrideCss
-				? [{ tag: 'style', content: accentOverrideCss }]
-				: [],
+			head: [accentOverrideCss, backgroundOverrideCss]
+				.filter(Boolean)
+				.map((content) => ({ tag: 'style', content })),
 		}),
 	],
 });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { requireSession } from "@/lib/session";
 import { getProjectRole } from "@/lib/permissions";
 

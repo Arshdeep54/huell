@@ -27,7 +27,7 @@ Welcome! This page is served at your docs site's root.
 Use \`<Note>\`, \`<Warning>\`, \`<Tip>\`, \`<Steps>\`, \`<Card>\`, \`<CardGroup>\`, \`<Tabs>\`, and
 \`<CodeGroup>\` right in this MDX — no import needed, Huell wires them in automatically.
 
-Run \`huell validate\` to check this folder, or \`huell preview\` to see it rendered.
+Run \`huellup validate\` to check this folder, or \`huellup preview\` to see it rendered.
 `;
 
 const EXAMPLE_INSTALL = `---
@@ -55,8 +55,8 @@ export function runInit(targetDir: string) {
   console.log("  introduction.mdx");
   console.log("  getting-started/installation.mdx");
   console.log("");
-  console.log("Next: huell preview   (see it rendered, hot-reloading)");
-  console.log("      huell validate  (check it before publishing)");
+  console.log("Next: huellup preview   (see it rendered, hot-reloading)");
+  console.log("      huellup validate  (check it before publishing)");
   console.log("");
   console.log('Tip: add a logo by setting "logo" (and "favicon") in docs.json, with the');
   console.log("     file placed under a logo/, images/, or assets/ folder here.");

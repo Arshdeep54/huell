@@ -1,5 +1,5 @@
 {
-  "name": "huell",
+  "name": "huellup",
   "version": "0.1.0",
   "type": "module",
   "description": "Author, validate, and preview Huell-format docs (docs.json + .mdx) — plus an MCP server so AI agents can write them correctly.",
@@ -14,7 +14,7 @@
     "node": ">=20"
   },
   "bin": {
-    "huell": "./bin/huell.js"
+    "huellup": "./bin/huellup.js"
   },
   "files": ["bin", "dist"],
   "scripts": {

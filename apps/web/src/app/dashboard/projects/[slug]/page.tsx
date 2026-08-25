@@ -16,6 +16,8 @@ import {
 } from "@/lib/actions";
 import { StatusDot, BuildRow } from "@/components/build-row";
 import { BuildLog } from "@/components/build-log";
+import { UploadDocsForm } from "@/components/upload-docs-form";
+import { SubmitButton } from "@/components/submit-button";
 import type { ProjectRole } from "@doctor/db";
 
 const TABS = ["overview", "source", "builds", "members"] as const;
@@ -171,9 +173,9 @@ export default async function ProjectPage({
           </a>
           {canEdit && (
             <form action={boundTriggerBuild}>
-              <button
-                type="submit"
+              <SubmitButton
                 disabled={!canRebuild}
+                pendingLabel="Queuing…"
                 className="hover-brighten"
                 style={{
                   height: 34,
@@ -183,11 +185,10 @@ export default async function ProjectPage({
                   background: "var(--acc)",
                   color: "var(--accfg)",
                   font: "600 12.5px/1 'IBM Plex Sans', sans-serif",
-                  opacity: canRebuild ? 1 : 0.5,
                 }}
               >
                 Rebuild
-              </button>
+              </SubmitButton>
             </form>
           )}
         </div>
@@ -555,9 +556,13 @@ function SourceTab({
                       </label>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 15 }}>
-                      <button type="submit" className="hover-brighten" style={{ height: 32, padding: "0 13px", border: "none", borderRadius: 8, background: "var(--acc)", color: "var(--accfg)", font: "600 12px/1 'IBM Plex Sans', sans-serif" }}>
+                      <SubmitButton
+                        pendingLabel="Saving…"
+                        className="hover-brighten"
+                        style={{ height: 32, padding: "0 13px", border: "none", borderRadius: 8, background: "var(--acc)", color: "var(--accfg)", font: "600 12px/1 'IBM Plex Sans', sans-serif" }}
+                      >
                         Save
-                      </button>
+                      </SubmitButton>
                     </div>
                   </form>
                 )}
@@ -606,27 +611,7 @@ function SourceTab({
                   <span style={{ height: 1, background: "var(--line)", flex: 1 }} />
                 </div>
 
-                <form action={boundUploadDocsZip} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px dashed var(--line2)", borderRadius: 12, padding: "14px 16px" }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ font: "500 12.5px/1.3 'IBM Plex Sans', sans-serif", color: "var(--fg2)" }}>
-                      Drop a <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>docs.zip</span> here
-                    </div>
-                    <div style={{ font: "400 11.5px/1.5 'IBM Plex Mono', monospace", color: "var(--fg3)", marginTop: 4 }}>
-                      docs.json + .mdx + images · 20MB max · replaces the repo as source
-                    </div>
-                  </div>
-                  <input id="docsZip" name="docsZip" type="file" accept=".zip" required style={{ display: "none" }} />
-                  <label
-                    htmlFor="docsZip"
-                    className="hover-fg"
-                    style={{ height: 31, padding: "0 12px", border: "1px solid var(--line2)", borderRadius: 8, background: "transparent", color: "var(--fg2)", font: "500 12px/31px 'IBM Plex Sans', sans-serif", flex: "none" }}
-                  >
-                    Choose file
-                  </label>
-                  <button type="submit" className="hover-fg" style={{ height: 31, padding: "0 12px", border: "1px solid var(--line2)", borderRadius: 8, background: "transparent", color: "var(--fg2)", font: "500 12px/31px 'IBM Plex Sans', sans-serif", flex: "none" }}>
-                    Upload &amp; build
-                  </button>
-                </form>
+                <UploadDocsForm action={boundUploadDocsZip} />
               </>
             )}
           </div>

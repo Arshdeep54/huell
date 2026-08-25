@@ -46,7 +46,7 @@ interface SourceDocsJson {
   };
 }
 
-const SUPPORTED_MDX_COMPONENTS = [
+export const SUPPORTED_MDX_COMPONENTS = [
   "Note",
   "Info",
   "Tip",

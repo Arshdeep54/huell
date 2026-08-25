@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "@doctor/db": "workspace:*",
+    "@doctor/docs-core": "workspace:*",
     "drizzle-orm": "^0.38.4",
-    "gray-matter": "^4.0.3",
     "octokit": "^4.1.2"
   },
   "devDependencies": {

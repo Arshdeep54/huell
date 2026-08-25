@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -61,6 +61,20 @@ class BuildLogger {
   }
 }
 
+function countFiles(dir: string, extension?: string): number {
+  if (!existsSync(dir)) return 0;
+  let count = 0;
+  for (const entry of readdirSync(dir)) {
+    const entryPath = path.join(dir, entry);
+    if (statSync(entryPath).isDirectory()) {
+      count += countFiles(entryPath, extension);
+    } else if (!extension || entry.endsWith(extension)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 async function nextQueuedBuild() {
   return db
     .select()
@@ -101,26 +115,33 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
         ? { sourceDocsDir: uploadDir, resolvedCommitSha: build.commitSha }
         : await cloneRepo(project, cloneDir, logger);
 
+    const docsFileCount = countFiles(sourceDocsDir);
+    logger.append(
+      build.source === "upload"
+        ? `resolved upload · ${project.docsPath}/ (${docsFileCount} files)`
+        : `resolved ${resolvedCommitSha.slice(0, 7)} · ${project.docsPath}/ (${docsFileCount} files)`,
+    );
+
     // Build directly inside the template's own directory rather than a fresh
     // copy elsewhere: builds are strictly sequential (one worker, polled one
     // at a time), so there's no concurrency to isolate against, and it keeps
     // node_modules co-located with the project root it belongs to — a copy +
     // symlinked node_modules elsewhere breaks Vite's module resolution once
     // DATA_DIR lives on a different path than the code (as it does in Docker).
-    logger.append("→ migrating docs.json to the site's nav config");
     const { warnings } = migrateDocs({
       sourceDocsDir,
       destSiteDir: templateDir,
       siteUrl: `https://${project.slug}${docsSubdomainSeparator}docs.${orgDomain}`,
       projectName: project.name,
     });
+    logger.append("docs.json → starlight nav config");
     for (const warning of warnings) logger.append(`warning: ${warning}`);
 
-    logger.append("→ building site");
     rmSync(path.join(templateDir, "dist"), { recursive: true, force: true });
-    await runStep(path.join(templateDir, "node_modules", ".bin", "astro"), ["build"], templateDir, ASTRO_BUILD_TIMEOUT_MS, logger);
+    await runQuietly(path.join(templateDir, "node_modules", ".bin", "astro"), ["build"], templateDir, ASTRO_BUILD_TIMEOUT_MS);
+    const pageCount = countFiles(path.join(templateDir, "dist"), ".html");
+    logger.append(`astro build · ${pageCount} pages`);
 
-    logger.append("→ deploying");
     const siteDir = path.join(dataDir, "sites", project.slug);
     const siteTmpDir = `${siteDir}.tmp`;
     rmSync(siteTmpDir, { recursive: true, force: true });
@@ -128,7 +149,7 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     rmSync(siteDir, { recursive: true, force: true });
     mkdirSync(path.dirname(siteDir), { recursive: true });
     renameSync(siteTmpDir, siteDir);
-    logger.append(`✓ deployed ${resolvedCommitSha.slice(0, 7)}`);
+    logger.append(`atomic swap → ${project.slug}${docsSubdomainSeparator}docs.${orgDomain}`);
 
     db.update(schema.builds)
       .set({ status: "succeeded", commitSha: resolvedCommitSha, finishedAt: new Date(), log: logger.text })
@@ -143,6 +164,9 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
       })
       .run();
   } catch (error) {
+    // Curated step lines above stay clean; the raw tool output that actually
+    // explains a failure (execFile rejections carry stdout/stderr in the
+    // message) only shows up here, when something's gone wrong.
     logger.append(error instanceof Error ? (error.stack ?? error.message) : String(error));
     failBuild(build.id, logger.text);
   } finally {
@@ -155,7 +179,7 @@ async function cloneRepo(
   cloneDir: string,
   logger: BuildLogger,
 ): Promise<{ sourceDocsDir: string; resolvedCommitSha: string }> {
-  logger.append(`→ cloning ${project.repoFullName}@${project.branch}`);
+  logger.append(`clone ${project.repoFullName}@${project.branch}`);
   const installation = db
     .select()
     .from(schema.githubInstallations)
@@ -174,22 +198,17 @@ async function cloneRepo(
 
   mkdirSync(path.dirname(cloneDir), { recursive: true });
   const cloneUrl = `https://x-access-token:${token}@github.com/${project.repoFullName}.git`;
-  await runStep("git", ["clone", "--depth", "1", "--branch", project.branch, cloneUrl, cloneDir], undefined, GIT_TIMEOUT_MS, logger);
+  await runQuietly("git", ["clone", "--depth", "1", "--branch", project.branch, cloneUrl, cloneDir], undefined, GIT_TIMEOUT_MS);
   const { stdout: resolvedSha } = await run("git", ["-C", cloneDir, "rev-parse", "HEAD"], { timeout: GIT_TIMEOUT_MS });
 
   return { sourceDocsDir: path.join(cloneDir, project.docsPath), resolvedCommitSha: resolvedSha.trim() };
 }
 
-async function runStep(
-  command: string,
-  args: string[],
-  cwd: string | undefined,
-  timeout: number,
-  logger: BuildLogger,
-): Promise<void> {
-  logger.append(`$ ${command} ${args.join(" ")}`);
-  const { stdout, stderr } = await run(command, args, { cwd, timeout });
-  logger.append([stdout, stderr].filter(Boolean).join("\n"));
+// Runs a command without logging its raw output — only a thrown, rejected
+// promise (whose message/stdout/stderr the caller's catch block logs) should
+// ever surface a subprocess's actual console spew to the dashboard.
+async function runQuietly(command: string, args: string[], cwd: string | undefined, timeout: number): Promise<void> {
+  await run(command, args, { cwd, timeout });
 }
 
 function failBuild(buildId: string, log: string) {

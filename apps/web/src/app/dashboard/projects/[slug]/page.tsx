@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@doctor/db";
@@ -88,7 +90,9 @@ export default async function ProjectPage({
   const builds = allBuilds.slice(0, 20);
   const latestBuild = allBuilds[0];
   const latestSucceeded = allBuilds.find((b) => b.status === "succeeded");
-  const canRebuild = Boolean(project.repoFullName) || allBuilds.some((b) => b.source === "upload");
+  const dataDir = process.env.DATA_DIR ?? "./data";
+  const hasPersistedUpload = existsSync(path.join(dataDir, "uploads", project.id, "docs.json"));
+  const canRebuild = Boolean(project.repoFullName) || hasPersistedUpload;
 
   const orgDomain = process.env.ORG_DOMAIN ?? "example.com";
   const docsSubdomainSeparator = process.env.DOCS_SUBDOMAIN_SEPARATOR === "-" ? "-" : ".";

@@ -1,13 +1,16 @@
 import { db, schema } from "@doctor/db";
 import { requireOrgAdmin } from "@/lib/session";
 import { inviteMember, removeMember } from "@/lib/actions";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { formatRelativeTime } from "@/lib/format";
+
+function initialsOf(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
 export default async function MembersPage() {
   const session = await requireOrgAdmin();
@@ -15,94 +18,148 @@ export default async function MembersPage() {
   const pendingInvites = db.select().from(schema.invites).all().filter((i) => !i.redeemedAt);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-lg font-semibold">Members</h1>
-        <p className="text-sm text-muted-foreground">
-          Invite by email — they sign in with the matching Google account.
-        </p>
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 20 }}>
+        <div>
+          <h1 style={{ margin: 0, font: "600 22px/1.2 'IBM Plex Sans', sans-serif", letterSpacing: "-0.015em" }}>
+            Members
+          </h1>
+          <p style={{ margin: "7px 0 0", font: "400 13px/1.5 'IBM Plex Sans', sans-serif", color: "var(--fg2)" }}>
+            Org&#8209;wide access. Invite by email — they sign in with the matching Google account.
+          </p>
+        </div>
+        <form action={inviteMember} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 9 }}>
+          <input
+            name="email"
+            type="email"
+            placeholder="teammate@example.com"
+            required
+            style={{
+              width: 230,
+              height: 36,
+              borderRadius: 9,
+              border: "1px solid var(--line2)",
+              background: "var(--bg2)",
+              color: "var(--fg)",
+              padding: "0 12px",
+              font: "400 12.5px/1 'IBM Plex Mono', monospace",
+            }}
+          />
+          <button
+            type="submit"
+            style={{
+              height: 36,
+              padding: "0 14px",
+              border: "none",
+              borderRadius: 9,
+              background: "var(--acc)",
+              color: "var(--accfg)",
+              font: "600 12.5px/1 'IBM Plex Sans', sans-serif",
+            }}
+          >
+            Invite
+          </button>
+        </form>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Invite someone</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={inviteMember} className="flex items-end gap-2">
-            <Field className="flex-1">
-              <FieldLabel htmlFor="email">Email</FieldLabel>
-              <Input id="email" name="email" type="email" placeholder="teammate@example.com" required />
-            </Field>
-            <Button type="submit">Send invite</Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {pendingInvites.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Pending invites</CardTitle>
-            <CardDescription>Waiting for the invitee to sign in with Google.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {pendingInvites.map((invite) => (
-              <div key={invite.id} className="text-sm text-muted-foreground">
-                {invite.email}
+      <div
+        style={{
+          marginTop: 24,
+          border: "1px solid var(--line)",
+          borderRadius: 14,
+          background: "var(--bg2)",
+          boxShadow: "var(--dc-shadow)",
+          overflow: "hidden",
+        }}
+      >
+        {members.map((member) => (
+          <div
+            key={member.id}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(240px,1.1fr) 130px 90px",
+              alignItems: "center",
+              gap: 16,
+              padding: "14px 20px",
+              borderBottom: "1px solid var(--line)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+              <div
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: "50%",
+                  background: member.isOrgAdmin ? "var(--accsoft)" : "var(--bg3)",
+                  color: member.isOrgAdmin ? "var(--acc)" : "var(--fg2)",
+                  display: "grid",
+                  placeItems: "center",
+                  font: "600 11px/1 'IBM Plex Mono', monospace",
+                  flex: "none",
+                }}
+              >
+                {initialsOf(member.name)}
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ font: "500 13px/1.2 'IBM Plex Sans', sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {member.name}
+                </div>
+                <div style={{ font: "400 11px/1.4 'IBM Plex Mono', monospace", color: "var(--fg3)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {member.email}
+                </div>
+              </div>
+            </div>
+            <span
+              style={{
+                font: "500 10.5px/1 'IBM Plex Mono', monospace",
+                color: member.isOrgAdmin ? "var(--accfg)" : "var(--fg2)",
+                background: member.isOrgAdmin ? "var(--acc)" : "var(--bg3)",
+                padding: "5px 9px",
+                borderRadius: 6,
+                justifySelf: "start",
+              }}
+            >
+              {member.isOrgAdmin ? "org admin" : "member"}
+            </span>
+            {member.id !== session.user.id ? (
+              <form action={removeMember} style={{ justifySelf: "end" }}>
+                <input type="hidden" name="memberId" value={member.id} />
+                <button type="submit" style={{ border: "none", background: "transparent", color: "var(--fg3)", font: "500 11.5px/1 'IBM Plex Sans', sans-serif" }}>
+                  Remove
+                </button>
+              </form>
+            ) : (
+              <span />
+            )}
+          </div>
+        ))}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Org members</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Member</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="w-0" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="size-7">
-                        <AvatarImage src={member.avatarUrl ?? undefined} alt={member.name} />
-                        <AvatarFallback>{member.name.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{member.name}</p>
-                        <p className="text-xs text-muted-foreground">{member.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={member.isOrgAdmin ? "default" : "secondary"}>
-                      {member.isOrgAdmin ? "Org admin" : "Member"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {member.id !== session.user.id && (
-                      <form action={removeMember}>
-                        <input type="hidden" name="memberId" value={member.id} />
-                        <Button type="submit" variant="ghost" size="sm">
-                          Remove
-                        </Button>
-                      </form>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        {pendingInvites.map((invite) => (
+          <div
+            key={invite.id}
+            style={{
+              padding: "14px 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: "var(--bg3)",
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--acc)" }} />
+            <span style={{ font: "400 12.5px/1.4 'IBM Plex Mono', monospace", color: "var(--fg2)" }}>{invite.email}</span>
+            <span style={{ font: "500 10.5px/1 'IBM Plex Mono', monospace", color: "var(--acc)", background: "var(--accsoft)", padding: "4px 8px", borderRadius: 6 }}>
+              invite pending
+            </span>
+            <span style={{ font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+              sent {formatRelativeTime(invite.createdAt)} · not signed in yet
+            </span>
+          </div>
+        ))}
+      </div>
+      <p style={{ margin: "16px 0 0", font: "400 11.5px/1.7 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+        Removing someone from the org removes them from every project. Org admin is granted here; per&#8209;project
+        owner/editor/viewer is set on the project.
+      </p>
     </div>
   );
 }

@@ -1,64 +1,66 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@doctor/db";
 import { requireSession } from "@/lib/session";
 import { getProjectRole } from "@/lib/permissions";
+import { formatRelativeTime } from "@/lib/format";
 import {
   addProjectMember,
+  disconnectProjectRepo,
   removeProjectMember,
   triggerBuild,
   updateProjectSettings,
   uploadDocsZip,
 } from "@/lib/actions";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ExternalLinkIcon, GitBranchIcon, HammerIcon, UploadIcon } from "lucide-react";
-import type { BuildStatus, ProjectRole } from "@doctor/db";
+import { StatusDot, BuildRow } from "@/components/build-row";
+import { BuildLog } from "@/components/build-log";
+import type { ProjectRole } from "@doctor/db";
 
-function BuildStatusBadge({ status }: { status: BuildStatus }) {
-  if (status === "succeeded") {
-    return (
-      <Badge variant="outline" className="gap-1.5 border-transparent bg-success-background text-success">
-        <span className="size-1.5 rounded-full bg-current" />
-        succeeded
-      </Badge>
-    );
-  }
-  if (status === "running") {
-    return (
-      <Badge variant="outline" className="gap-1.5 border-transparent bg-accent text-accent-foreground">
-        <span className="size-1.5 animate-pulse-ring rounded-full bg-current" />
-        running
-      </Badge>
-    );
-  }
-  if (status === "failed") {
-    return (
-      <Badge variant="outline" className="gap-1.5 border-transparent bg-destructive/10 text-destructive">
-        <span className="size-1.5 rounded-full bg-current" />
-        failed
-      </Badge>
-    );
-  }
-  return <Badge variant="outline">queued</Badge>;
+const TABS = ["overview", "source", "builds", "members"] as const;
+type Tab = (typeof TABS)[number];
+
+function roleBadge(role: ProjectRole) {
+  const styles: Record<ProjectRole, { fg: string; bg: string }> = {
+    owner: { fg: "var(--ok)", bg: "var(--oksoft)" },
+    editor: { fg: "var(--fg2)", bg: "var(--bg3)" },
+    viewer: { fg: "var(--fg3)", bg: "var(--bg3)" },
+  };
+  const s = styles[role];
+  return (
+    <span
+      style={{
+        font: "500 10.5px/1 'IBM Plex Mono', monospace",
+        color: s.fg,
+        background: s.bg,
+        padding: "4px 8px",
+        borderRadius: 6,
+      }}
+    >
+      {role}
+    </span>
+  );
 }
 
-function RoleBadge({ role }: { role: ProjectRole }) {
-  if (role === "owner") return <Badge className="bg-accent text-accent-foreground">owner</Badge>;
-  if (role === "editor") return <Badge variant="secondary">editor</Badge>;
-  return <Badge variant="outline">viewer</Badge>;
+function initialsOf(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
-export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProjectPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const session = await requireSession();
   const { slug } = await params;
+  const { tab: tabParam } = await searchParams;
+  const tab: Tab = TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "overview";
 
   const project = db.select().from(schema.projects).where(eq(schema.projects.slug, slug)).get();
   if (!project) notFound();
@@ -67,6 +69,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   if (!role && !session.user.isOrgAdmin) notFound();
   const canEdit = session.user.isOrgAdmin || role === "owner" || role === "editor";
   const canManageMembers = session.user.isOrgAdmin || role === "owner";
+  const displayRole: ProjectRole = role ?? "owner";
 
   const members = db
     .select({ member: schema.members, role: schema.projectMembers.role })
@@ -75,13 +78,17 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
     .where(eq(schema.projectMembers.projectId, project.id))
     .all();
 
-  const builds = db
+  const allBuilds = db
     .select()
     .from(schema.builds)
     .where(eq(schema.builds.projectId, project.id))
     .orderBy(desc(schema.builds.createdAt))
-    .limit(10)
     .all();
+  const totalBuildCount = allBuilds.length;
+  const builds = allBuilds.slice(0, 20);
+  const latestBuild = allBuilds[0];
+  const latestSucceeded = allBuilds.find((b) => b.status === "succeeded");
+  const canRebuild = Boolean(project.repoFullName) || allBuilds.some((b) => b.source === "upload");
 
   const orgDomain = process.env.ORG_DOMAIN ?? "example.com";
   const docsSubdomainSeparator = process.env.DOCS_SUBDOMAIN_SEPARATOR === "-" ? "-" : ".";
@@ -90,204 +97,638 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const boundAddMember = addProjectMember.bind(null, project.id);
   const boundTriggerBuild = triggerBuild.bind(null, project.id);
   const boundUploadDocsZip = uploadDocsZip.bind(null, project.id);
+  const boundDisconnectRepo = disconnectProjectRepo.bind(null, project.id);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">{project.name}</h1>
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 20,
+          paddingBottom: 22,
+          borderBottom: "1px solid var(--line)",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h1 style={{ margin: 0, font: "600 23px/1.15 'IBM Plex Sans', sans-serif", letterSpacing: "-0.015em" }}>
+              {project.name}
+            </h1>
+            {roleBadge(displayRole)}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 9, flexWrap: "wrap" }}>
+            <a
+              href={`https://${docsHost}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                font: "400 12.5px/1 'IBM Plex Mono', monospace",
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                color: "var(--acc)",
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: latestSucceeded ? "var(--ok)" : "var(--fg3)",
+                }}
+              />
+              {docsHost}
+            </a>
+            <span style={{ font: "400 12px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+              {latestSucceeded
+                ? `${latestSucceeded.commitSha.slice(0, 7)} · deployed ${formatRelativeTime(latestSucceeded.createdAt)}`
+                : "not built yet"}
+            </span>
+          </div>
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 9 }}>
           <a
             href={`https://${docsHost}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            className="hover-fg3-line"
+            style={{
+              height: 34,
+              padding: "0 13px",
+              border: "1px solid var(--line2)",
+              borderRadius: 9,
+              background: "transparent",
+              color: "var(--fg)",
+              font: "500 12.5px/34px 'IBM Plex Sans', sans-serif",
+            }}
           >
-            {docsHost}
-            <ExternalLinkIcon className="size-3" />
+            Visit site
           </a>
+          {canEdit && (
+            <form action={boundTriggerBuild}>
+              <button
+                type="submit"
+                disabled={!canRebuild}
+                className="hover-brighten"
+                style={{
+                  height: 34,
+                  padding: "0 14px",
+                  border: "none",
+                  borderRadius: 9,
+                  background: "var(--acc)",
+                  color: "var(--accfg)",
+                  font: "600 12.5px/1 'IBM Plex Sans', sans-serif",
+                  opacity: canRebuild ? 1 : 0.5,
+                }}
+              >
+                Rebuild
+              </button>
+            </form>
+          )}
         </div>
-        {canEdit && (
-          <form action={boundTriggerBuild}>
-            <Button type="submit" disabled={!project.repoFullName}>
-              <HammerIcon data-icon="inline-start" />
-              Rebuild
-            </Button>
-          </form>
-        )}
       </div>
 
-      {canEdit && docsSubdomainSeparator === "-" && (
-        <Alert>
-          <AlertTitle>One-time step to make this project's docs reachable</AlertTitle>
-          <AlertDescription>
-            <p>
-              This instance routes project docs one at a time rather than with a wildcard. Run this once on your
-              server, then add a matching line to <code>deploy/cloudflared/config.yml</code> and restart the{" "}
-              <code>cloudflared</code> container:
-            </p>
-            <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">
-              <code>{`cloudflared tunnel route dns <your-tunnel-name> ${docsHost}`}</code>
-            </pre>
-          </AlertDescription>
-        </Alert>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 12, marginTop: 20 }}>
+        <StatCard label="SITE">
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              font: "500 13px/1 'IBM Plex Sans', sans-serif",
+              color: latestSucceeded ? "var(--ok)" : "var(--fg3)",
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "currentColor" }} />
+            {latestSucceeded ? "live" : "no builds"}
+          </span>
+        </StatCard>
+        <StatCard label="CURRENT BUILD">
+          {latestBuild ? <StatusDot status={latestBuild.status} /> : <span style={{ color: "var(--fg3)" }}>—</span>}
+        </StatCard>
+        <StatCard label="SOURCE">
+          <span
+            style={{
+              font: "400 12.5px/1 'IBM Plex Mono', monospace",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "block",
+            }}
+          >
+            {project.repoFullName ? `${project.repoFullName}@${project.branch}` : "docs.zip upload"}
+          </span>
+        </StatCard>
+        <StatCard label="DOCS PATH">
+          <span style={{ font: "400 12.5px/1 'IBM Plex Mono', monospace" }}>{project.docsPath}</span>
+        </StatCard>
+      </div>
+
+      {tab === "overview" && (
+        <OverviewTab
+          project={project}
+          canEdit={canEdit}
+          latestBuild={latestBuild}
+          builds={builds.slice(0, 3)}
+          totalBuildCount={totalBuildCount}
+          members={members}
+          docsSubdomainSeparator={docsSubdomainSeparator}
+        />
       )}
 
-      <Card className="animate-rise">
-        <CardHeader>
-          <CardTitle className="text-base">Repository</CardTitle>
-          <CardDescription>
-            {project.repoFullName ? project.repoFullName : "No repository connected yet."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {canManageMembers && (
-            <Button variant="outline" render={<Link href={`/api/github/install?project=${project.slug}`} />}>
-              <GitBranchIcon data-icon="inline-start" />
-              {project.repoFullName ? "Reconnect repository" : "Connect repository"}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {canEdit && (
-        <Card className="animate-rise" style={{ animationDelay: "30ms" }}>
-          <CardHeader>
-            <CardTitle className="text-base">Upload docs</CardTitle>
-            <CardDescription className="text-pretty">
-              No repo needed — upload a docs.zip (docs.json, .mdx pages, images) to build from directly.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={boundUploadDocsZip} className="flex items-end gap-2">
-              <Field className="flex-1">
-                <FieldLabel htmlFor="docsZip">docs.zip</FieldLabel>
-                <Input id="docsZip" name="docsZip" type="file" accept=".zip" required />
-                <FieldDescription>20MB limit.</FieldDescription>
-              </Field>
-              <Button type="submit" variant="outline">
-                <UploadIcon data-icon="inline-start" />
-                Upload &amp; build
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      {tab === "source" && (
+        <SourceTab
+          project={project}
+          canEdit={canEdit}
+          canManageMembers={canManageMembers}
+          docsHost={docsHost}
+          docsSubdomainSeparator={docsSubdomainSeparator}
+          boundUpdateSettings={boundUpdateSettings}
+          boundUploadDocsZip={boundUploadDocsZip}
+          boundDisconnectRepo={boundDisconnectRepo}
+        />
       )}
 
-      {canEdit && (
-        <Card className="animate-rise" style={{ animationDelay: "50ms" }}>
-          <CardHeader>
-            <CardTitle className="text-base">Build settings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={boundUpdateSettings} className="flex flex-wrap items-end gap-4">
-              <Field>
-                <FieldLabel htmlFor="branch">Branch</FieldLabel>
-                <Input id="branch" name="branch" defaultValue={project.branch} className="w-40" />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="docsPath">Docs path</FieldLabel>
-                <Input id="docsPath" name="docsPath" defaultValue={project.docsPath} className="w-40" />
-              </Field>
-              <Button type="submit">Save</Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+      {tab === "builds" && <BuildsTab builds={builds} totalBuildCount={totalBuildCount} />}
 
-      <Card className="animate-rise" style={{ animationDelay: "100ms" }}>
-        <CardHeader>
-          <CardTitle className="text-base">Builds</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {tab === "members" && (
+        <MembersTab
+          project={project}
+          members={members}
+          canManageMembers={canManageMembers}
+          boundAddMember={boundAddMember}
+        />
+      )}
+    </div>
+  );
+}
+
+function StatCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ border: "1px solid var(--line)", borderRadius: 11, background: "var(--bg2)", padding: "13px 15px" }}>
+      <div style={{ font: "500 10px/1 'IBM Plex Mono', monospace", letterSpacing: "0.1em", color: "var(--fg3)" }}>
+        {label}
+      </div>
+      <div style={{ marginTop: 9 }}>{children}</div>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  meta,
+  right,
+  children,
+}: {
+  title: string;
+  meta?: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      style={{
+        border: "1px solid var(--line)",
+        borderRadius: 14,
+        background: "var(--bg2)",
+        boxShadow: "var(--dc-shadow)",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          padding: "16px 20px",
+          borderBottom: "1px solid var(--line)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <h2 style={{ margin: 0, font: "600 13.5px/1 'IBM Plex Sans', sans-serif" }}>{title}</h2>
+        {meta && <span style={{ font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>{meta}</span>}
+        {right && <div style={{ marginLeft: "auto" }}>{right}</div>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function OverviewTab({
+  project,
+  canEdit,
+  latestBuild,
+  builds,
+  totalBuildCount,
+  members,
+  docsSubdomainSeparator,
+}: {
+  project: typeof schema.projects.$inferSelect;
+  canEdit: boolean;
+  latestBuild?: typeof schema.builds.$inferSelect;
+  builds: (typeof schema.builds.$inferSelect)[];
+  totalBuildCount: number;
+  members: { member: typeof schema.members.$inferSelect; role: ProjectRole }[];
+  docsSubdomainSeparator: string;
+}) {
+  const owners = members.filter((m) => m.role === "owner").length;
+  const editors = members.filter((m) => m.role === "editor").length;
+  const viewers = members.filter((m) => m.role === "viewer").length;
+
+  return (
+    <div style={{ marginTop: 22, display: "grid", gridTemplateColumns: "minmax(0,1.45fr) minmax(300px,1fr)", gap: 22, alignItems: "start" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 22, minWidth: 0 }}>
+        {latestBuild && (
+          <section style={{ border: "1px solid var(--line)", borderRadius: 14, background: "var(--bg2)", boxShadow: "var(--dc-shadow)", padding: "18px 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 11, flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, font: "600 13.5px/1 'IBM Plex Sans', sans-serif" }}>Current build</h2>
+              <StatusDot status={latestBuild.status} />
+              <span style={{ marginLeft: "auto", font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+                {formatRelativeTime(latestBuild.createdAt)}
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+              <span style={{ font: "500 12.5px/1.4 'IBM Plex Mono', monospace" }}>{latestBuild.commitSha.slice(0, 7)}</span>
+              <span style={{ font: "400 12.5px/1.4 'IBM Plex Sans', sans-serif", color: "var(--fg2)" }}>
+                {latestBuild.source === "upload" ? "manual upload" : `push to ${project.branch}`}
+              </span>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <BuildLog buildId={latestBuild.id} initialStatus={latestBuild.status} initialLog={latestBuild.log} />
+            </div>
+          </section>
+        )}
+
+        <Section title="Recent builds" right={<a href={`?tab=builds`} className="hover-fg" style={{ color: "var(--acc)", font: "500 11.5px/1 'IBM Plex Sans', sans-serif" }}>All {totalBuildCount} builds</a>}>
           {builds.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No builds yet.</p>
+            <p style={{ margin: 0, padding: "16px 20px", font: "400 12.5px/1.5 'IBM Plex Sans', sans-serif", color: "var(--fg3)" }}>
+              No builds yet.
+            </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Commit</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Started</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {builds.map((build) => (
-                  <TableRow key={build.id}>
-                    <TableCell className="font-mono text-xs tabular-nums">{build.commitSha.slice(0, 7)}</TableCell>
-                    <TableCell>
-                      <BuildStatusBadge status={build.status} />
-                    </TableCell>
-                    <TableCell className="text-xs tabular-nums text-muted-foreground">
-                      {build.createdAt.toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            builds.map((b) => <BuildRow key={b.id} build={b} />)
           )}
-        </CardContent>
-      </Card>
+        </Section>
 
-      <Card className="animate-rise" style={{ animationDelay: "150ms" }}>
-        <CardHeader>
-          <CardTitle className="text-base">Project members</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {canManageMembers && (
-            <form action={boundAddMember} className="flex items-end gap-2">
-              <Field className="flex-1">
-                <FieldLabel htmlFor="member-email">Org member email</FieldLabel>
-                <Input id="member-email" name="email" type="email" required />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="role">Role</FieldLabel>
-                <Select name="role" defaultValue="viewer">
-                  <SelectTrigger id="role" className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="viewer">Viewer</SelectItem>
-                      <SelectItem value="editor">Editor</SelectItem>
-                      <SelectItem value="owner">Owner</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Button type="submit">Add</Button>
-            </form>
-          )}
+        <section style={{ border: "1px solid var(--line)", borderRadius: 14, background: "var(--bg2)", boxShadow: "var(--dc-shadow)", padding: "17px 20px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ font: "600 12.5px/1.3 'IBM Plex Sans', sans-serif" }}>
+              Source: {project.repoFullName ?? "docs.zip upload"}
+            </div>
+            <div style={{ font: "400 11.5px/1.5 'IBM Plex Mono', monospace", color: "var(--fg3)", marginTop: 4 }}>
+              {project.repoFullName ? `${project.branch} · ${project.docsPath}/` : "no repository connected"}
+            </div>
+          </div>
+          <a
+            href="?tab=source"
+            className="hover-fg3-line"
+            style={{
+              height: 32,
+              padding: "0 12px",
+              border: "1px solid var(--line2)",
+              borderRadius: 8,
+              background: "transparent",
+              color: "var(--fg)",
+              font: "500 12px/32px 'IBM Plex Sans', sans-serif",
+              flex: "none",
+            }}
+          >
+            Source &amp; settings
+          </a>
+        </section>
+      </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Member</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="w-0" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map(({ member, role: memberRole }) => (
-                <TableRow key={member.id}>
-                  <TableCell className="text-sm">{member.name}</TableCell>
-                  <TableCell>
-                    <RoleBadge role={memberRole} />
-                  </TableCell>
-                  <TableCell>
-                    {canManageMembers && (
-                      <form action={removeProjectMember.bind(null, project.id, member.id)}>
-                        <Button type="submit" variant="ghost" size="sm">
-                          Remove
-                        </Button>
-                      </form>
-                    )}
-                  </TableCell>
-                </TableRow>
+      <div style={{ display: "flex", flexDirection: "column", gap: 22, minWidth: 0 }}>
+        <section style={{ border: "1px solid var(--line)", borderRadius: 14, background: "var(--bg2)", boxShadow: "var(--dc-shadow)", padding: "18px 19px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--ok)" }} />
+            <h2 style={{ margin: 0, font: "600 13.5px/1 'IBM Plex Sans', sans-serif" }}>Live deployment</h2>
+          </div>
+          <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 11 }}>
+            <Kv k="commit" v={latestBuild ? latestBuild.commitSha.slice(0, 7) : "—"} />
+            <Kv
+              k="built"
+              v={latestBuild ? formatRelativeTime(latestBuild.createdAt) : "—"}
+            />
+            <Kv k="branch" v={project.branch} />
+            <Kv k="docs subdomain" v={docsSubdomainSeparator === "-" ? "single-route" : "wildcard"} />
+          </div>
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)", font: "400 11.5px/1.6 'IBM Plex Sans', sans-serif", color: "var(--fg2)" }}>
+            A running build never takes the site down — the new output swaps in only after it succeeds.
+          </div>
+        </section>
+
+        <Section title="Access" meta={`${members.length} members`}>
+          <div style={{ padding: "14px 19px", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex" }}>
+              {members.slice(0, 3).map((m, i) => (
+                <div
+                  key={m.member.id}
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    background: "var(--bg3)",
+                    color: "var(--fg2)",
+                    display: "grid",
+                    placeItems: "center",
+                    font: "600 10px/1 'IBM Plex Mono', monospace",
+                    border: "2px solid var(--bg2)",
+                    marginLeft: i === 0 ? 0 : -8,
+                  }}
+                >
+                  {initialsOf(m.member.name)}
+                </div>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </div>
+            <span style={{ font: "400 11.5px/1.4 'IBM Plex Mono', monospace", color: "var(--fg3)", minWidth: 0 }}>
+              {owners} owner · {editors} editor · {viewers} viewer
+            </span>
+            <a
+              href="?tab=members"
+              className="hover-fg"
+              style={{
+                marginLeft: "auto",
+                border: "1px solid var(--line2)",
+                background: "transparent",
+                color: "var(--fg2)",
+                borderRadius: 8,
+                font: "500 11.5px/1 'IBM Plex Sans', sans-serif",
+                padding: "7px 10px",
+                flex: "none",
+              }}
+            >
+              Manage
+            </a>
+          </div>
+        </Section>
+      </div>
+    </div>
+  );
+}
+
+function Kv({ k, v }: { k: string; v: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, font: "400 12px/1.4 'IBM Plex Mono', monospace" }}>
+      <span style={{ color: "var(--fg3)" }}>{k}</span>
+      <span>{v}</span>
+    </div>
+  );
+}
+
+function SourceTab({
+  project,
+  canEdit,
+  canManageMembers,
+  docsSubdomainSeparator,
+  docsHost,
+  boundUpdateSettings,
+  boundUploadDocsZip,
+  boundDisconnectRepo,
+}: {
+  project: typeof schema.projects.$inferSelect;
+  canEdit: boolean;
+  canManageMembers: boolean;
+  docsSubdomainSeparator: string;
+  docsHost: string;
+  boundUpdateSettings: (formData: FormData) => Promise<void>;
+  boundUploadDocsZip: (formData: FormData) => Promise<void>;
+  boundDisconnectRepo: () => Promise<void>;
+}) {
+  return (
+    <div style={{ marginTop: 22, maxWidth: 940 }}>
+      {canEdit && docsSubdomainSeparator === "-" && (
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 22, padding: "14px 16px", border: "1px solid var(--line)", borderRadius: 11, background: "var(--bg3)" }}>
+          <span style={{ font: "500 10px/1.6 'IBM Plex Mono', monospace", color: "var(--fg3)", letterSpacing: "0.08em", textTransform: "uppercase", flex: "none", paddingTop: 1 }}>
+            one&#8209;time
+          </span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ font: "500 12.5px/1.4 'IBM Plex Sans', sans-serif" }}>
+              This instance routes docs one subdomain at a time, so this host needs a DNS route once.
+            </div>
+            <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 10, background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 8, padding: "9px 11px" }}>
+              <code style={{ font: "400 11.5px/1.4 'IBM Plex Mono', monospace", color: "var(--fg2)", overflowX: "auto", whiteSpace: "nowrap", flex: 1 }}>
+                {`cloudflared tunnel route dns <your-tunnel-name> ${docsHost}`}
+              </code>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <section style={{ border: "1px solid var(--line)", borderRadius: 14, background: "var(--bg2)", boxShadow: "var(--dc-shadow)", overflow: "hidden" }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10 }}>
+            <h2 style={{ margin: 0, font: "600 13.5px/1 'IBM Plex Sans', sans-serif" }}>Source</h2>
+            <span style={{ font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>where the docs come from</span>
+          </div>
+          <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            {project.repoFullName ? (
+              <div style={{ border: "1px solid var(--accline)", borderRadius: 12, background: "var(--bg3)", padding: "16px 17px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 11, flexWrap: "wrap" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--ok)" }} />
+                  <span style={{ font: "500 13.5px/1 'IBM Plex Mono', monospace" }}>{project.repoFullName}</span>
+                  <span style={{ font: "500 10.5px/1 'IBM Plex Mono', monospace", color: "var(--acc)", background: "var(--accsoft)", padding: "4px 8px", borderRadius: 6 }}>
+                    active source
+                  </span>
+                </div>
+                {canEdit && (
+                  <form action={boundUpdateSettings}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16 }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span style={{ font: "500 11px/1 'IBM Plex Mono', monospace", color: "var(--fg3)", letterSpacing: "0.04em" }}>BRANCH</span>
+                        <input
+                          name="branch"
+                          defaultValue={project.branch}
+                          style={{ height: 34, borderRadius: 8, border: "1px solid var(--line2)", background: "var(--bg)", color: "var(--fg)", padding: "0 11px", font: "400 12.5px/1 'IBM Plex Mono', monospace" }}
+                        />
+                      </label>
+                      <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span style={{ font: "500 11px/1 'IBM Plex Mono', monospace", color: "var(--fg3)", letterSpacing: "0.04em" }}>DOCS PATH</span>
+                        <input
+                          name="docsPath"
+                          defaultValue={project.docsPath}
+                          style={{ height: 34, borderRadius: 8, border: "1px solid var(--line2)", background: "var(--bg)", color: "var(--fg)", padding: "0 11px", font: "400 12.5px/1 'IBM Plex Mono', monospace" }}
+                        />
+                      </label>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 15 }}>
+                      <button type="submit" className="hover-brighten" style={{ height: 32, padding: "0 13px", border: "none", borderRadius: 8, background: "var(--acc)", color: "var(--accfg)", font: "600 12px/1 'IBM Plex Sans', sans-serif" }}>
+                        Save
+                      </button>
+                    </div>
+                  </form>
+                )}
+                {canManageMembers && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+                    <a href={`/api/github/install?project=${project.slug}`} className="hover-fg" style={{ height: 32, padding: "0 12px", border: "1px solid var(--line2)", borderRadius: 8, background: "transparent", color: "var(--fg2)", font: "500 12px/32px 'IBM Plex Sans', sans-serif" }}>
+                      Change repo
+                    </a>
+                    <form action={boundDisconnectRepo} style={{ marginLeft: "auto" }}>
+                      <button type="submit" className="hover-bad" style={{ border: "none", background: "transparent", color: "var(--fg3)", font: "500 11.5px/1 'IBM Plex Sans', sans-serif" }}>
+                        Disconnect
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+            ) : (
+              canManageMembers && (
+                <a
+                  href={`/api/github/install?project=${project.slug}`}
+                  className="hover-fg3-line"
+                  style={{
+                    display: "inline-flex",
+                    height: 34,
+                    padding: "0 14px",
+                    border: "1px solid var(--line2)",
+                    borderRadius: 9,
+                    background: "transparent",
+                    color: "var(--fg)",
+                    font: "500 12.5px/34px 'IBM Plex Sans', sans-serif",
+                    alignSelf: "flex-start",
+                  }}
+                >
+                  Connect repository
+                </a>
+              )
+            )}
+
+            {canEdit && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ height: 1, background: "var(--line)", flex: 1 }} />
+                  <span style={{ font: "500 10px/1 'IBM Plex Mono', monospace", color: "var(--fg3)", letterSpacing: "0.12em" }}>
+                    OR REPLACE WITH AN UPLOAD
+                  </span>
+                  <span style={{ height: 1, background: "var(--line)", flex: 1 }} />
+                </div>
+
+                <form action={boundUploadDocsZip} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px dashed var(--line2)", borderRadius: 12, padding: "14px 16px" }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ font: "500 12.5px/1.3 'IBM Plex Sans', sans-serif", color: "var(--fg2)" }}>
+                      Drop a <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>docs.zip</span> here
+                    </div>
+                    <div style={{ font: "400 11.5px/1.5 'IBM Plex Mono', monospace", color: "var(--fg3)", marginTop: 4 }}>
+                      docs.json + .mdx + images · 20MB max · replaces the repo as source
+                    </div>
+                  </div>
+                  <input id="docsZip" name="docsZip" type="file" accept=".zip" required style={{ display: "none" }} />
+                  <label
+                    htmlFor="docsZip"
+                    className="hover-fg"
+                    style={{ height: 31, padding: "0 12px", border: "1px solid var(--line2)", borderRadius: 8, background: "transparent", color: "var(--fg2)", font: "500 12px/31px 'IBM Plex Sans', sans-serif", flex: "none" }}
+                  >
+                    Choose file
+                  </label>
+                  <button type="submit" className="hover-fg" style={{ height: 31, padding: "0 12px", border: "1px solid var(--line2)", borderRadius: 8, background: "transparent", color: "var(--fg2)", font: "500 12px/31px 'IBM Plex Sans', sans-serif", flex: "none" }}>
+                    Upload &amp; build
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function BuildsTab({ builds, totalBuildCount }: { builds: (typeof schema.builds.$inferSelect)[]; totalBuildCount: number }) {
+  return (
+    <div style={{ marginTop: 22, maxWidth: 1040 }}>
+      <Section title="Build history" meta={`last ${builds.length} builds`}>
+        {builds.length === 0 ? (
+          <p style={{ margin: 0, padding: "16px 20px", font: "400 12.5px/1.5 'IBM Plex Sans', sans-serif", color: "var(--fg3)" }}>
+            No builds yet.
+          </p>
+        ) : (
+          builds.map((b, i) => <BuildRow key={b.id} build={b} defaultExpanded={i === 0 && (b.status === "running" || b.status === "queued")} />)
+        )}
+        <div style={{ padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ font: "400 11px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+            showing {builds.length} of {totalBuildCount} builds
+          </span>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function MembersTab({
+  project,
+  members,
+  canManageMembers,
+  boundAddMember,
+}: {
+  project: typeof schema.projects.$inferSelect;
+  members: { member: typeof schema.members.$inferSelect; role: ProjectRole }[];
+  canManageMembers: boolean;
+  boundAddMember: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <div style={{ marginTop: 22, maxWidth: 640 }}>
+      <Section title="Project members" meta={String(members.length)}>
+        <div>
+          {members.map(({ member, role }) => {
+            const styles: Record<ProjectRole, { fg: string; bg: string }> = {
+              owner: { fg: "var(--acc)", bg: "var(--accsoft)" },
+              editor: { fg: "var(--fg2)", bg: "var(--bg3)" },
+              viewer: { fg: "var(--fg3)", bg: "var(--bg3)" },
+            };
+            const s = styles[role];
+            return (
+              <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 19px", borderBottom: "1px solid var(--line)" }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--bg3)", color: "var(--fg2)", display: "grid", placeItems: "center", font: "600 10.5px/1 'IBM Plex Mono', monospace", flex: "none" }}>
+                  {initialsOf(member.name)}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ font: "500 12.5px/1.2 'IBM Plex Sans', sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {member.name}
+                  </div>
+                  <div style={{ font: "400 10.5px/1.4 'IBM Plex Mono', monospace", color: "var(--fg3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {member.email}
+                  </div>
+                </div>
+                <span style={{ font: "500 10.5px/1 'IBM Plex Mono', monospace", color: s.fg, background: s.bg, padding: "4px 8px", borderRadius: 6, flex: "none" }}>
+                  {role}
+                </span>
+                {canManageMembers && (
+                  <form action={removeProjectMember.bind(null, project.id, member.id)}>
+                    <button type="submit" className="hover-bad" style={{ border: "none", background: "transparent", color: "var(--fg3)", font: "500 11.5px/1 'IBM Plex Sans', sans-serif" }}>
+                      Remove
+                    </button>
+                  </form>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {canManageMembers && (
+          <form action={boundAddMember} style={{ padding: "13px 19px", display: "flex", alignItems: "center", gap: 9 }}>
+            <input
+              name="email"
+              type="email"
+              placeholder="teammate@example.com"
+              required
+              style={{ flex: 1, minWidth: 0, height: 32, borderRadius: 8, border: "1px solid var(--line2)", background: "var(--bg)", color: "var(--fg)", padding: "0 10px", font: "400 12px/1 'IBM Plex Mono', monospace" }}
+            />
+            <select
+              name="role"
+              defaultValue="viewer"
+              style={{ height: 32, borderRadius: 8, border: "1px solid var(--line2)", background: "var(--bg)", color: "var(--fg)", padding: "0 8px", font: "400 12px/1 'IBM Plex Mono', monospace" }}
+            >
+              <option value="viewer">Viewer</option>
+              <option value="editor">Editor</option>
+              <option value="owner">Owner</option>
+            </select>
+            <button type="submit" className="hover-fg3-line" style={{ height: 32, padding: "0 12px", border: "1px solid var(--line2)", borderRadius: 8, background: "transparent", color: "var(--fg)", font: "500 12px/1 'IBM Plex Sans', sans-serif", flex: "none" }}>
+              Add
+            </button>
+          </form>
+        )}
+        <div style={{ padding: "0 19px 15px", font: "400 11px/1.6 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+          Org admins can act on this project regardless of membership.
+        </div>
+      </Section>
     </div>
   );
 }

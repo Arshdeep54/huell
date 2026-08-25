@@ -10,8 +10,13 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@doctor/db";
 import { requireOrgAdmin, requireSession } from "@/lib/session";
 import { hasProjectRole } from "@/lib/permissions";
+import { signOut } from "@/auth";
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+export async function signOutAction() {
+  await signOut({ redirectTo: "/login" });
+}
 
 function slugify(name: string) {
   return name
@@ -145,6 +150,15 @@ export async function updateProjectSettings(projectId: string, formData: FormDat
   revalidatePath(`/dashboard/projects`);
 }
 
+export async function disconnectProjectRepo(projectId: string) {
+  const session = await requireSession();
+  if (!hasProjectRole(session.user.id, projectId, "owner", session.user.isOrgAdmin)) {
+    throw new Error("Only project owners can disconnect the repository.");
+  }
+  db.update(schema.projects).set({ repoFullName: null }).where(eq(schema.projects.id, projectId)).run();
+  revalidatePath(`/dashboard/projects`);
+}
+
 export async function selectProjectRepo(projectId: string, formData: FormData) {
   const session = await requireSession();
   if (!hasProjectRole(session.user.id, projectId, "owner", session.user.isOrgAdmin)) {
@@ -171,13 +185,35 @@ export async function triggerBuild(projectId: string) {
     .from(schema.githubInstallations)
     .where(eq(schema.githubInstallations.projectId, projectId))
     .get();
-  if (!installation) throw new Error("Connect a GitHub repository before building.");
+
+  if (installation) {
+    db.insert(schema.builds)
+      .values({
+        id: randomUUID(),
+        projectId,
+        source: "github",
+        commitSha: "HEAD",
+        status: "queued",
+        triggeredBy: session.user.id,
+        createdAt: new Date(),
+      })
+      .run();
+    revalidatePath(`/dashboard/projects`);
+    return;
+  }
+
+  const dataDir = process.env.DATA_DIR ?? "./data";
+  const uploadDir = path.join(dataDir, "uploads", projectId);
+  if (!existsSync(path.join(uploadDir, "docs.json"))) {
+    throw new Error("Connect a GitHub repository or upload a docs.zip before building.");
+  }
 
   db.insert(schema.builds)
     .values({
       id: randomUUID(),
       projectId,
-      commitSha: "HEAD",
+      source: "upload",
+      commitSha: `upload-${new Date().toISOString().slice(0, 19)}`,
       status: "queued",
       triggeredBy: session.user.id,
       createdAt: new Date(),
@@ -200,7 +236,11 @@ export async function uploadDocsZip(projectId: string, formData: FormData) {
 
   const dataDir = process.env.DATA_DIR ?? "./data";
   const buildId = randomUUID();
-  const extractDir = path.join(dataDir, "uploads", buildId);
+  // Persisted per-project (not per-build): the builder reads from here on every
+  // build for an upload-sourced project, including rebuilds that don't come with
+  // a fresh zip. Each upload replaces the previous one outright.
+  const extractDir = path.join(dataDir, "uploads", projectId);
+  rmSync(extractDir, { recursive: true, force: true });
   mkdirSync(extractDir, { recursive: true });
 
   const zip = new AdmZip(Buffer.from(await file.arrayBuffer()));

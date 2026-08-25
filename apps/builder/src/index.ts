@@ -27,6 +27,40 @@ const orgDomain = process.env.ORG_DOMAIN ?? "example.com";
 const docsSubdomainSeparator = process.env.DOCS_SUBDOMAIN_SEPARATOR === "-" ? "-" : ".";
 const templateDir = fileURLToPath(new URL("../../../templates/docs-site", import.meta.url));
 
+// Flushes the accumulated log to the build's DB row after every appended
+// step, instead of only writing once when the build finishes — this is what
+// lets the dashboard poll and show progress on a build that's still running.
+class BuildLogger {
+  private lines: string[] = [];
+  private secrets: string[] = [];
+  private readonly startedAt = Date.now();
+
+  constructor(private readonly buildId: string) {}
+
+  // Registers a secret (e.g. a GitHub installation token embedded in a clone
+  // URL) that must never reach the persisted log, which project members can
+  // view in the dashboard. Applies to every append from this point on,
+  // including the command line built with it and any error text it surfaces in.
+  redact(secret: string) {
+    if (secret) this.secrets.push(secret);
+  }
+
+  append(text: string) {
+    if (!text) return;
+    for (const secret of this.secrets) text = text.split(secret).join("***");
+    const elapsed = Math.floor((Date.now() - this.startedAt) / 1000);
+    const stamp = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
+    for (const line of text.split("\n")) {
+      this.lines.push(`[${stamp}] ${line}`);
+    }
+    db.update(schema.builds).set({ log: this.lines.join("\n") }).where(eq(schema.builds.id, this.buildId)).run();
+  }
+
+  get text() {
+    return this.lines.join("\n");
+  }
+}
+
 async function nextQueuedBuild() {
   return db
     .select()
@@ -43,8 +77,13 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     failBuild(build.id, "Project no longer exists.");
     return;
   }
+  const uploadDir = path.join(dataDir, "uploads", project.id);
   if (build.source === "github" && !project.repoFullName) {
     failBuild(build.id, "Project has no repository connected.");
+    return;
+  }
+  if (build.source === "upload" && !existsSync(path.join(uploadDir, "docs.json"))) {
+    failBuild(build.id, "No uploaded docs found for this project.");
     return;
   }
 
@@ -54,14 +93,13 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     .run();
 
   const cloneDir = path.join(dataDir, "work", `${build.id}-repo`);
-  const uploadDir = path.join(dataDir, "uploads", build.id);
-  const log: string[] = [];
+  const logger = new BuildLogger(build.id);
 
   try {
     const { sourceDocsDir, resolvedCommitSha } =
       build.source === "upload"
         ? { sourceDocsDir: uploadDir, resolvedCommitSha: build.commitSha }
-        : await cloneRepo(project, cloneDir, log);
+        : await cloneRepo(project, cloneDir, logger);
 
     // Build directly inside the template's own directory rather than a fresh
     // copy elsewhere: builds are strictly sequential (one worker, polled one
@@ -69,17 +107,20 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     // node_modules co-located with the project root it belongs to — a copy +
     // symlinked node_modules elsewhere breaks Vite's module resolution once
     // DATA_DIR lives on a different path than the code (as it does in Docker).
+    logger.append("→ migrating docs.json to the site's nav config");
     const { warnings } = migrateDocs({
       sourceDocsDir,
       destSiteDir: templateDir,
       siteUrl: `https://${project.slug}${docsSubdomainSeparator}docs.${orgDomain}`,
       projectName: project.name,
     });
-    for (const warning of warnings) log.push(`warning: ${warning}`);
+    for (const warning of warnings) logger.append(`warning: ${warning}`);
 
+    logger.append("→ building site");
     rmSync(path.join(templateDir, "dist"), { recursive: true, force: true });
-    log.push(await runStep(path.join(templateDir, "node_modules", ".bin", "astro"), ["build"], templateDir, ASTRO_BUILD_TIMEOUT_MS));
+    await runStep(path.join(templateDir, "node_modules", ".bin", "astro"), ["build"], templateDir, ASTRO_BUILD_TIMEOUT_MS, logger);
 
+    logger.append("→ deploying");
     const siteDir = path.join(dataDir, "sites", project.slug);
     const siteTmpDir = `${siteDir}.tmp`;
     rmSync(siteTmpDir, { recursive: true, force: true });
@@ -87,9 +128,10 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     rmSync(siteDir, { recursive: true, force: true });
     mkdirSync(path.dirname(siteDir), { recursive: true });
     renameSync(siteTmpDir, siteDir);
+    logger.append(`✓ deployed ${resolvedCommitSha.slice(0, 7)}`);
 
     db.update(schema.builds)
-      .set({ status: "succeeded", commitSha: resolvedCommitSha, finishedAt: new Date(), log: log.join("\n") })
+      .set({ status: "succeeded", commitSha: resolvedCommitSha, finishedAt: new Date(), log: logger.text })
       .where(eq(schema.builds.id, build.id))
       .run();
 
@@ -101,19 +143,19 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
       })
       .run();
   } catch (error) {
-    log.push(error instanceof Error ? (error.stack ?? error.message) : String(error));
-    failBuild(build.id, log.join("\n"));
+    logger.append(error instanceof Error ? (error.stack ?? error.message) : String(error));
+    failBuild(build.id, logger.text);
   } finally {
     rmSync(cloneDir, { recursive: true, force: true });
-    rmSync(uploadDir, { recursive: true, force: true });
   }
 }
 
 async function cloneRepo(
   project: typeof schema.projects.$inferSelect,
   cloneDir: string,
-  log: string[],
+  logger: BuildLogger,
 ): Promise<{ sourceDocsDir: string; resolvedCommitSha: string }> {
+  logger.append(`→ cloning ${project.repoFullName}@${project.branch}`);
   const installation = db
     .select()
     .from(schema.githubInstallations)
@@ -128,18 +170,26 @@ async function cloneRepo(
     request: { signal: AbortSignal.timeout(GITHUB_API_TIMEOUT_MS) },
   });
   const token = tokenResponse.data.token;
+  logger.redact(token);
 
   mkdirSync(path.dirname(cloneDir), { recursive: true });
   const cloneUrl = `https://x-access-token:${token}@github.com/${project.repoFullName}.git`;
-  log.push(await runStep("git", ["clone", "--depth", "1", "--branch", project.branch, cloneUrl, cloneDir], undefined, GIT_TIMEOUT_MS));
+  await runStep("git", ["clone", "--depth", "1", "--branch", project.branch, cloneUrl, cloneDir], undefined, GIT_TIMEOUT_MS, logger);
   const { stdout: resolvedSha } = await run("git", ["-C", cloneDir, "rev-parse", "HEAD"], { timeout: GIT_TIMEOUT_MS });
 
   return { sourceDocsDir: path.join(cloneDir, project.docsPath), resolvedCommitSha: resolvedSha.trim() };
 }
 
-async function runStep(command: string, args: string[], cwd?: string, timeout = GIT_TIMEOUT_MS): Promise<string> {
+async function runStep(
+  command: string,
+  args: string[],
+  cwd: string | undefined,
+  timeout: number,
+  logger: BuildLogger,
+): Promise<void> {
+  logger.append(`$ ${command} ${args.join(" ")}`);
   const { stdout, stderr } = await run(command, args, { cwd, timeout });
-  return [`$ ${command} ${args.join(" ")}`, stdout, stderr].filter(Boolean).join("\n");
+  logger.append([stdout, stderr].filter(Boolean).join("\n"));
 }
 
 function failBuild(buildId: string, log: string) {

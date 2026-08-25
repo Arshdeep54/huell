@@ -31,5 +31,5 @@
 	}
 	root * /srv/sites/{project_slug}
 	file_server
-	try_files {path} /404.html
+	try_files {path} {path}/index.html {path}.html /404.html
 }

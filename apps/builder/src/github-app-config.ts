@@ -9,11 +9,11 @@ export interface GithubAppConfig {
 
 /**
  * Mirrors apps/web's github-app.ts — both read the same DB row / env fallback.
- * Imports @doctor/db dynamically so callers can load .env first (its module
+ * Imports @huell/db dynamically so callers can load .env first (its module
  * body reads DATA_DIR at import time).
  */
 export async function getGithubAppConfig(): Promise<GithubAppConfig | null> {
-  const { db, schema } = await import("@doctor/db");
+  const { db, schema } = await import("@huell/db");
   const row = db.select().from(schema.githubAppConfig).where(eq(schema.githubAppConfig.id, "1")).get();
   if (row) return { appId: row.appId, slug: row.slug, privateKey: row.privateKey };
 

@@ -25,9 +25,9 @@ title: Introduction
 Welcome! This page is served at your docs site's root.
 
 Use \`<Note>\`, \`<Warning>\`, \`<Tip>\`, \`<Steps>\`, \`<Card>\`, \`<CardGroup>\`, \`<Tabs>\`, and
-\`<CodeGroup>\` right in this MDX — no import needed, Doctor wires them in automatically.
+\`<CodeGroup>\` right in this MDX — no import needed, Huell wires them in automatically.
 
-Run \`doctor-docs validate\` to check this folder, or \`doctor-docs preview\` to see it rendered.
+Run \`huell-docs validate\` to check this folder, or \`huell-docs preview\` to see it rendered.
 `;
 
 const EXAMPLE_INSTALL = `---
@@ -55,8 +55,8 @@ export function runInit(targetDir: string) {
   console.log("  introduction.mdx");
   console.log("  getting-started/installation.mdx");
   console.log("");
-  console.log("Next: doctor-docs preview   (see it rendered, hot-reloading)");
-  console.log("      doctor-docs validate  (check it before publishing)");
+  console.log("Next: huell-docs preview   (see it rendered, hot-reloading)");
+  console.log("      huell-docs validate  (check it before publishing)");
   console.log("");
   console.log('Tip: add a logo by setting "logo" (and "favicon") in docs.json, with the');
   console.log("     file placed under a logo/, images/, or assets/ folder here.");

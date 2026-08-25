@@ -68,13 +68,17 @@ export function AppSidebar({
             display: "grid",
             placeItems: "center",
             color: "var(--accfg)",
-            font: "600 12px/1 'IBM Plex Mono', monospace",
           }}
         >
-          D
+          <svg width="16" height="16" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="4" width="28" height="32" rx="2" stroke="currentColor" strokeWidth="3" />
+            <line x1="8" y1="12" x2="28" y2="12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            <line x1="8" y1="18" x2="28" y2="18" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            <line x1="8" y1="24" x2="24" y2="24" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          </svg>
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ font: "600 13px/1.2 'IBM Plex Sans', sans-serif" }}>Doctor</div>
+          <div style={{ font: "600 13px/1.2 'IBM Plex Sans', sans-serif" }}>Huell</div>
           <div style={{ font: "400 10.5px/1.2 'IBM Plex Mono', monospace", color: "var(--fg3)", marginTop: 2 }}>
             {orgDomain}
           </div>

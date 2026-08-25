@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 

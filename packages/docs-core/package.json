@@ -1,5 +1,5 @@
 {
-  "name": "@doctor/docs-core",
+  "name": "@huell/docs-core",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",

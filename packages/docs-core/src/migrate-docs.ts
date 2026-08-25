@@ -2,33 +2,34 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, wri
 import path from "node:path";
 import matter from "gray-matter";
 
-export interface DoctorNavGroup {
+export interface HuellNavGroup {
   label: string;
   pages: string[];
 }
 
-export interface DoctorNavTab {
+export interface HuellNavTab {
   label: string;
   slug: string;
-  groups: DoctorNavGroup[];
+  groups: HuellNavGroup[];
 }
 
-export interface DoctorNavLink {
+export interface HuellNavLink {
   label: string;
   href: string;
 }
 
-export type DoctorLogo = string | { light: string; dark: string };
+export type HuellLogo = string | { light: string; dark: string };
 
-export interface DoctorNav {
+export interface HuellNav {
   name: string;
   siteUrl: string;
   accentColor?: string;
-  logo?: DoctorLogo;
+  backgroundColor?: { light?: string; dark?: string };
+  logo?: HuellLogo;
   favicon?: string;
-  navLinks: DoctorNavLink[];
-  navPrimary?: DoctorNavLink;
-  tabs: DoctorNavTab[];
+  navLinks: HuellNavLink[];
+  navPrimary?: HuellNavLink;
+  tabs: HuellNavTab[];
 }
 
 type SourcePage = string | { group: string; pages: SourcePage[] };
@@ -44,7 +45,8 @@ interface SourceDocsJson {
   name?: string;
   navigation: { tabs?: SourceTab[]; groups?: SourceGroup[] } | SourceGroup[];
   colors?: { primary?: string };
-  logo?: DoctorLogo;
+  background?: { color?: { light?: string; dark?: string } };
+  logo?: HuellLogo;
   favicon?: string;
   navbar?: {
     links?: { label: string; href: string }[];
@@ -87,10 +89,10 @@ function flattenPages(pages: SourcePage[], warnings: string[]): string[] {
   });
 }
 
-function normalizeTabs(docsJson: SourceDocsJson, warnings: string[]): DoctorNavTab[] {
+function normalizeTabs(docsJson: SourceDocsJson, warnings: string[]): HuellNavTab[] {
   const { navigation } = docsJson;
 
-  const toTab = (label: string, groups: SourceGroup[]): DoctorNavTab => ({
+  const toTab = (label: string, groups: SourceGroup[]): HuellNavTab => ({
     label,
     slug: slugify(label),
     groups: groups.map((g) => ({ label: g.group, pages: flattenPages(g.pages, warnings) })),
@@ -194,7 +196,7 @@ export function migrateDocs(options: {
 
   const tabs = normalizeTabs(docsJson, warnings);
 
-  let logo: DoctorLogo | undefined;
+  let logo: HuellLogo | undefined;
   if (typeof docsJson.logo === "string") {
     const resolved = resolveLogoForImport(sourceDocsDir, destSiteDir, docsJson.logo, warnings);
     if (resolved) logo = resolved;
@@ -204,10 +206,11 @@ export function migrateDocs(options: {
     if (light && dark) logo = { light, dark };
   }
 
-  const nav: DoctorNav = {
+  const nav: HuellNav = {
     name: docsJson.name ?? projectName,
     siteUrl,
     accentColor: docsJson.colors?.primary,
+    backgroundColor: docsJson.background?.color,
     logo,
     favicon: docsJson.favicon,
     navLinks: docsJson.navbar?.links ?? [],

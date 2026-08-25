@@ -7,7 +7,7 @@ WORKDIR /repo
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/db/package.json packages/db/package.json
-RUN pnpm install --frozen-lockfile --filter @doctor/web... --filter @doctor/db
+RUN pnpm install --frozen-lockfile --filter @huell/web... --filter @huell/db
 
 FROM base AS build
 WORKDIR /repo
@@ -17,7 +17,7 @@ COPY --from=deps /repo/packages/db/node_modules ./packages/db/node_modules
 COPY packages/db packages/db
 COPY apps/web apps/web
 COPY pnpm-workspace.yaml package.json ./
-RUN pnpm --filter @doctor/web build
+RUN pnpm --filter @huell/web build
 
 FROM base AS runtime
 WORKDIR /app

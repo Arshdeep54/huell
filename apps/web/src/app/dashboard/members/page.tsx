@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { requireOrgAdmin } from "@/lib/session";
 import { inviteMember, removeMember, revokeInvite } from "@/lib/actions";
 import { formatRelativeTime } from "@/lib/format";

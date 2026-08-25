@@ -5,7 +5,7 @@ import { dirname } from "node:path";
 import * as schema from "./schema";
 
 const dataDir = process.env.DATA_DIR ?? "./data";
-const dbPath = `${dataDir}/doctor.sqlite`;
+const dbPath = `${dataDir}/huell.sqlite`;
 mkdirSync(dirname(dbPath), { recursive: true });
 
 const sqlite = new Database(dbPath);

@@ -1,11 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { SUPPORTED_MDX_COMPONENTS, validateDocs } from "@doctor/docs-core";
+import { SUPPORTED_MDX_COMPONENTS, validateDocs } from "@huell/docs-core";
 
 const DOCS_JSON_SCHEMA_DESCRIPTION = {
   description:
-    "Doctor's docs.json — Mintlify-compatible. Lives at the root of a docs/ folder alongside .mdx pages.",
+    "Huell's docs.json. Lives at the root of a docs/ folder alongside .mdx pages.",
   fields: {
     name: "string, optional — site name shown in the nav. Falls back to the project name.",
     navigation:
@@ -37,27 +37,27 @@ const COMPONENT_NOTES: Record<string, string> = {
 };
 
 export async function runMcp() {
-  const server = new McpServer({ name: "doctor-docs", version: "0.1.0" });
+  const server = new McpServer({ name: "huell-docs", version: "0.1.0" });
 
-  server.resource("docs-json-schema", "doctor://docs-json-schema", async () => ({
+  server.resource("docs-json-schema", "huell://docs-json-schema", async () => ({
     contents: [
       {
-        uri: "doctor://docs-json-schema",
+        uri: "huell://docs-json-schema",
         mimeType: "application/json",
         text: JSON.stringify(DOCS_JSON_SCHEMA_DESCRIPTION, null, 2),
       },
     ],
   }));
 
-  server.resource("components", "doctor://components", async () => ({
+  server.resource("components", "huell://components", async () => ({
     contents: [
       {
-        uri: "doctor://components",
+        uri: "huell://components",
         mimeType: "application/json",
         text: JSON.stringify(
           {
             description:
-              "MDX components available in any Doctor .mdx page with no import needed — Doctor injects the import automatically for whichever of these you actually use.",
+              "MDX components available in any Huell .mdx page with no import needed — Huell injects the import automatically for whichever of these you actually use.",
             supported: SUPPORTED_MDX_COMPONENTS.map((name) => ({
               name,
               note: COMPONENT_NOTES[name] ?? null,
@@ -72,7 +72,7 @@ export async function runMcp() {
 
   server.tool(
     "validate_docs",
-    "Validates a Doctor docs/ folder (docs.json + .mdx pages) by running the exact same migration Doctor's build worker runs, against a scratch directory. Returns errors (which block a real build) and warnings (which don't).",
+    "Validates a Huell docs/ folder (docs.json + .mdx pages) by running the exact same migration Huell's build worker runs, against a scratch directory. Returns errors (which block a real build) and warnings (which don't).",
     { path: z.string().describe("Absolute or relative path to the docs/ folder to validate.") },
     async ({ path: docsDir }) => {
       const result = validateDocs(docsDir);

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { requireSession } from "@/lib/session";
 import { getInstallationOctokit } from "@/lib/octokit";
 import { selectProjectRepo } from "@/lib/actions";

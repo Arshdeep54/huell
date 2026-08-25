@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { notFound } from "next/navigation";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { requireSession } from "@/lib/session";
 import { getProjectRole } from "@/lib/permissions";
 import { formatRelativeTime } from "@/lib/format";
@@ -21,7 +21,7 @@ import { BuildLog } from "@/components/build-log";
 import { UploadDocsForm } from "@/components/upload-docs-form";
 import { SubmitButton } from "@/components/submit-button";
 import { AddProjectMemberForm } from "@/components/add-project-member-form";
-import type { ProjectRole } from "@doctor/db";
+import type { ProjectRole } from "@huell/db";
 
 const TABS = ["overview", "source", "builds", "members"] as const;
 type Tab = (typeof TABS)[number];

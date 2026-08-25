@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { BuildStatus } from "@doctor/db";
+import type { BuildStatus } from "@huell/db";
 
 const LIVE_STATUSES: BuildStatus[] = ["queued", "running"];
 const POLL_INTERVAL_MS = 1000;

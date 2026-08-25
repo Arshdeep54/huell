@@ -1,5 +1,5 @@
 {
-  "name": "@doctor/web",
+  "name": "@huell/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
-    "@doctor/db": "workspace:*",
+    "@huell/db": "workspace:*",
     "adm-zip": "^0.5.16",
     "@octokit/webhooks": "^13.4.0",
     "class-variance-authority": "^0.7.1",

@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { requireSession } from "@/lib/session";
 import { getGithubAppConfig } from "@/lib/github-app";
 import { AppSidebar } from "@/components/app-sidebar";

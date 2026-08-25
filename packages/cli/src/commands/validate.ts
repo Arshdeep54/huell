@@ -1,5 +1,5 @@
 import path from "node:path";
-import { validateDocs } from "@doctor/docs-core";
+import { validateDocs } from "@huell/docs-core";
 
 export function runValidate(targetDir: string) {
   const docsDir = path.resolve(targetDir);

@@ -18,7 +18,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Doctor",
+  title: "Huell",
   description: "Self-hosted docs, connected to GitHub.",
 };
 

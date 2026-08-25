@@ -12,7 +12,7 @@ export default async function GithubSettingsPage({
 
   const dashboardUrl = process.env.DASHBOARD_URL ?? "http://localhost:3000";
   const manifest = {
-    name: `Doctor (${new URL(dashboardUrl).hostname})`,
+    name: `Huell (${new URL(dashboardUrl).hostname})`,
     url: dashboardUrl,
     hook_attributes: { url: `${dashboardUrl}/api/github/webhook` },
     redirect_url: `${dashboardUrl}/api/github/manifest-callback`,
@@ -60,7 +60,7 @@ export default async function GithubSettingsPage({
             <div>
               <div style={{ font: "600 14px/1.2 'IBM Plex Sans', sans-serif" }}>Connected</div>
               <div style={{ font: "400 12px/1.4 'IBM Plex Sans', sans-serif", color: "var(--fg2)", marginTop: 3 }}>
-                Doctor ({new URL(dashboardUrl).hostname}) · app slug {config.slug}
+                Huell ({new URL(dashboardUrl).hostname}) · app slug {config.slug}
               </div>
             </div>
           </div>
@@ -87,7 +87,7 @@ export default async function GithubSettingsPage({
             </div>
           </div>
           <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
-            <Step n={1}>Doctor sends a pre&#8209;filled App manifest to GitHub — nothing to configure by hand.</Step>
+            <Step n={1}>Huell sends a pre&#8209;filled App manifest to GitHub — nothing to configure by hand.</Step>
             <Step n={2}>You approve it on GitHub and choose which repositories it can read.</Step>
             <Step n={3}>GitHub returns the credentials here. Push events start rebuilding projects.</Step>
             <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 12 }}>

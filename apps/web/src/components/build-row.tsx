@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { BuildStatus, schema } from "@doctor/db";
+import type { BuildStatus, schema } from "@huell/db";
 import { formatRelativeTime } from "@/lib/format";
 import { BuildLog } from "@/components/build-log";
 

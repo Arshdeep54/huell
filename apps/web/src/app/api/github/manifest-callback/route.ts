@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, schema } from "@doctor/db";
+import { db, schema } from "@huell/db";
 import { requireOrgAdmin } from "@/lib/session";
 
 export async function GET(request: NextRequest) {

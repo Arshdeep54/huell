@@ -3,25 +3,59 @@ import config from 'virtual:starlight/user-config';
 import LanguageSelect from 'virtual:starlight/components/LanguageSelect';
 import Search from 'virtual:starlight/components/Search';
 import SiteTitle from 'virtual:starlight/components/SiteTitle';
-import SocialIcons from 'virtual:starlight/components/SocialIcons';
 import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
 import nav from '../../nav.config.json';
 
 const currentPath = Astro.url.pathname.replace(/^\/|\/$/g, '');
 const isActiveTab = (tab) => tab.groups.some((group) => group.pages.includes(currentPath));
 const firstPage = (tab) => tab.groups[0]?.pages[0] ?? '';
+const hasTabs = nav.tabs.length > 1;
 
 const shouldRenderSearch =
 	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
+
+// The tab row only shows at the md breakpoint (matching its `md:sl-flex` class below),
+// so only grow --sl-nav-height there too — everything else that depends on this var
+// (fixed header height, sidebar top offset, page top padding) follows automatically.
+const navHeightOverrideCss = hasTabs
+	? `@media (min-width: 50rem){:root{--sl-nav-height:calc(4rem + 2.75rem);}}`
+	: '';
 ---
 
-<div class="header">
-	<div class="title-wrapper sl-flex">
-		<SiteTitle />
+<style set:html={navHeightOverrideCss} />
+
+<div class="header-rows">
+	<div class="header-row-main">
+		<div class="title-wrapper sl-flex">
+			<SiteTitle />
+		</div>
+		<div class="sl-flex print:hidden">
+			{shouldRenderSearch && <Search />}
+		</div>
+		<div class="sl-hidden md:sl-flex print:hidden right-group">
+			{
+				nav.navLinks?.length > 0 && (
+					<div class="huell-nav-links">
+						{nav.navLinks.map((link) => (
+							<a href={link.href}>{link.label}</a>
+						))}
+					</div>
+				)
+			}
+			<ThemeSelect />
+			<LanguageSelect />
+			{
+				nav.navPrimary && (
+					<a class="huell-nav-primary" href={nav.navPrimary.href}>
+						{nav.navPrimary.label}
+					</a>
+				)
+			}
+		</div>
 	</div>
 	{
-		nav.tabs.length > 1 && (
-			<nav class="doctor-tabs sl-hidden md:sl-flex" aria-label="Sections">
+		hasTabs && (
+			<nav class="huell-tabs sl-hidden md:sl-flex" aria-label="Sections">
 				{nav.tabs.map((tab) => (
 					<a href={`/${firstPage(tab)}/`} aria-current={isActiveTab(tab) ? 'page' : undefined}>
 						{tab.label}
@@ -30,42 +64,23 @@ const shouldRenderSearch =
 			</nav>
 		)
 	}
-	<div class="sl-flex print:hidden">
-		{shouldRenderSearch && <Search />}
-	</div>
-	<div class="sl-hidden md:sl-flex print:hidden right-group">
-		{
-			nav.navLinks?.length > 0 && (
-				<div class="doctor-nav-links">
-					{nav.navLinks.map((link) => (
-						<a href={link.href}>{link.label}</a>
-					))}
-				</div>
-			)
-		}
-		<div class="sl-flex social-icons">
-			<SocialIcons />
-		</div>
-		<ThemeSelect />
-		<LanguageSelect />
-		{
-			nav.navPrimary && (
-				<a class="doctor-nav-primary" href={nav.navPrimary.href}>
-					{nav.navPrimary.label}
-				</a>
-			)
-		}
-	</div>
 </div>
 
 <style>
 	@layer starlight.core {
-		.header {
+		.header-rows {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			gap: 0.65rem;
+			height: 100%;
+		}
+
+		.header-row-main {
 			display: flex;
 			gap: var(--sl-nav-gap);
 			justify-content: space-between;
 			align-items: center;
-			height: 100%;
 		}
 
 		.title-wrapper {
@@ -75,24 +90,18 @@ const shouldRenderSearch =
 			min-width: 0;
 		}
 
-		.right-group,
-		.social-icons {
+		.right-group {
 			gap: 1rem;
 			align-items: center;
 		}
-		.social-icons::after {
-			content: '';
-			height: 2rem;
-			border-inline-end: 1px solid var(--sl-color-gray-5);
-		}
 	}
 
-	.doctor-tabs {
+	.huell-tabs {
 		gap: 0.25rem;
 		align-items: center;
 		flex-shrink: 0;
 	}
-	.doctor-tabs a {
+	.huell-tabs a {
 		padding: 0.4rem 0.85rem;
 		border-radius: 999px;
 		font-size: 0.85rem;
@@ -101,31 +110,31 @@ const shouldRenderSearch =
 		text-decoration: none;
 		white-space: nowrap;
 	}
-	.doctor-tabs a:hover {
+	.huell-tabs a:hover {
 		color: var(--sl-color-white);
 	}
-	.doctor-tabs a[aria-current='page'] {
+	.huell-tabs a[aria-current='page'] {
 		background: var(--sl-color-accent);
-		color: var(--sl-color-white);
+		color: var(--sl-color-black);
 	}
 
-	.doctor-nav-links {
+	.huell-nav-links {
 		display: flex;
 		gap: 1rem;
 		align-items: center;
 	}
-	.doctor-nav-links a {
+	.huell-nav-links a {
 		font-size: 0.85rem;
 		font-weight: 500;
 		color: var(--sl-color-gray-2);
 		text-decoration: none;
 		white-space: nowrap;
 	}
-	.doctor-nav-links a:hover {
+	.huell-nav-links a:hover {
 		color: var(--sl-color-white);
 	}
 
-	.doctor-nav-primary {
+	.huell-nav-primary {
 		display: inline-flex;
 		align-items: center;
 		height: 2rem;
@@ -139,7 +148,7 @@ const shouldRenderSearch =
 		white-space: nowrap;
 		transition: opacity 150ms ease;
 	}
-	.doctor-nav-primary:hover {
+	.huell-nav-primary:hover {
 		opacity: 0.85;
 		color: var(--sl-color-black);
 	}

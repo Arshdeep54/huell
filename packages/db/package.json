@@ -1,5 +1,5 @@
 {
-  "name": "@doctor/db",
+  "name": "@huell/db",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",

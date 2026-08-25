@@ -16,6 +16,7 @@
         "pages": [
           "guides/migrating-existing-docs",
           "guides/connecting-a-project",
+          "guides/cli-and-mcp",
           "guides/tunnel-deployment"
         ]
       }

@@ -89,6 +89,36 @@ export async function removeMember(formData: FormData) {
   revalidatePath("/dashboard/members");
 }
 
+export async function approveWaitlistEntry(formData: FormData) {
+  await requireOrgAdmin();
+  const waitlistId = String(formData.get("waitlistId") ?? "");
+
+  const entry = db.select().from(schema.waitlist).where(eq(schema.waitlist.id, waitlistId)).get();
+  if (!entry) return;
+
+  db.insert(schema.members)
+    .values({
+      id: randomUUID(),
+      email: entry.email,
+      name: entry.name,
+      avatarUrl: entry.avatarUrl,
+      isOrgAdmin: false,
+      createdAt: new Date(),
+    })
+    .onConflictDoNothing()
+    .run();
+  db.delete(schema.waitlist).where(eq(schema.waitlist.id, waitlistId)).run();
+
+  revalidatePath("/dashboard/members");
+}
+
+export async function rejectWaitlistEntry(formData: FormData) {
+  await requireOrgAdmin();
+  const waitlistId = String(formData.get("waitlistId") ?? "");
+  db.delete(schema.waitlist).where(eq(schema.waitlist.id, waitlistId)).run();
+  revalidatePath("/dashboard/members");
+}
+
 export async function createProject(formData: FormData) {
   const session = await requireSession();
   const name = String(formData.get("name") ?? "").trim();

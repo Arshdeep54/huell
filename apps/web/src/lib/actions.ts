@@ -7,7 +7,7 @@ import AdmZip from "adm-zip";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
-import { db, schema } from "@doctor/db";
+import { db, schema, type ProjectRole } from "@doctor/db";
 import { requireOrgAdmin, requireSession } from "@/lib/session";
 import { hasProjectRole } from "@/lib/permissions";
 import { signOut } from "@/auth";
@@ -27,9 +27,18 @@ function slugify(name: string) {
 }
 
 export async function inviteMember(formData: FormData) {
-  const session = await requireOrgAdmin();
+  const session = await requireSession();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email) throw new Error("Email is required.");
+
+  // Invites created from a project's "Add member" flow (not the org-wide
+  // Members page) carry which project + role to also grant on redeem.
+  const projectId = String(formData.get("projectId") ?? "").trim() || null;
+  const role = (String(formData.get("role") ?? "").trim() || null) as ProjectRole | null;
+
+  const canInvite =
+    session.user.isOrgAdmin || (projectId !== null && hasProjectRole(session.user.id, projectId, "owner", false));
+  if (!canInvite) throw new Error("You don't have permission to invite members.");
 
   const alreadyMember = db.select().from(schema.members).where(eq(schema.members.email, email)).get();
   if (alreadyMember) throw new Error("This person is already a member.");
@@ -39,12 +48,37 @@ export async function inviteMember(formData: FormData) {
       id: randomUUID(),
       email,
       invitedBy: session.user.id,
+      projectId,
+      role,
       createdAt: new Date(),
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({
+      target: schema.invites.email,
+      set: { projectId, role, invitedBy: session.user.id },
+    })
     .run();
 
   revalidatePath("/dashboard/members");
+  if (projectId) revalidatePath("/dashboard/projects");
+}
+
+export async function revokeInvite(formData: FormData) {
+  const session = await requireSession();
+  const inviteId = String(formData.get("inviteId") ?? "");
+
+  const invite = db.select().from(schema.invites).where(eq(schema.invites.id, inviteId)).get();
+  if (!invite) return;
+  if (invite.redeemedAt) throw new Error("This invite was already accepted.");
+
+  const canRevoke =
+    session.user.isOrgAdmin ||
+    (invite.projectId !== null && hasProjectRole(session.user.id, invite.projectId, "owner", false));
+  if (!canRevoke) throw new Error("You don't have permission to revoke this invite.");
+
+  db.delete(schema.invites).where(eq(schema.invites.id, inviteId)).run();
+
+  revalidatePath("/dashboard/members");
+  if (invite.projectId) revalidatePath("/dashboard/projects");
 }
 
 export async function removeMember(formData: FormData) {
@@ -94,24 +128,36 @@ export async function createProject(formData: FormData) {
   redirect(`/dashboard/projects/${slug}`);
 }
 
-export async function addProjectMember(projectId: string, formData: FormData) {
+export type AddProjectMemberState = {
+  error?: string;
+  notOrgMember?: boolean;
+  email?: string;
+  role?: ProjectRole;
+} | null;
+
+export async function addProjectMember(
+  projectId: string,
+  _prevState: AddProjectMemberState,
+  formData: FormData,
+): Promise<AddProjectMemberState> {
   const session = await requireSession();
   if (!hasProjectRole(session.user.id, projectId, "owner", session.user.isOrgAdmin)) {
     throw new Error("Only project owners can add members.");
   }
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const role = String(formData.get("role") ?? "viewer") as "owner" | "editor" | "viewer";
+  const role = String(formData.get("role") ?? "viewer") as ProjectRole;
+  if (!email) return { error: "Email is required." };
 
   const member = db.select().from(schema.members).where(eq(schema.members.email, email)).get();
-  if (!member) throw new Error("No org member found with that email. Invite them to the org first.");
+  if (!member) return { notOrgMember: true, email, role };
 
   const existing = db
     .select()
     .from(schema.projectMembers)
     .where(and(eq(schema.projectMembers.projectId, projectId), eq(schema.projectMembers.memberId, member.id)))
     .get();
-  if (existing) throw new Error("Already a member of this project.");
+  if (existing) return { error: "Already a member of this project." };
 
   db.insert(schema.projectMembers)
     .values({
@@ -124,6 +170,7 @@ export async function addProjectMember(projectId: string, formData: FormData) {
     .run();
 
   revalidatePath(`/dashboard/projects`);
+  return null;
 }
 
 export async function removeProjectMember(projectId: string, memberId: string) {

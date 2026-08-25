@@ -15,6 +15,13 @@
       "when": 1787411520387,
       "tag": "0001_perfect_the_order",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787641085474,
+      "tag": "0002_slimy_ben_urich",
+      "breakpoints": true
     }
   ]
 }

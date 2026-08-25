@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
 import { db, schema } from "@doctor/db";
 import { requireOrgAdmin } from "@/lib/session";
-import { inviteMember, removeMember } from "@/lib/actions";
+import { inviteMember, removeMember, revokeInvite } from "@/lib/actions";
 import { formatRelativeTime } from "@/lib/format";
 
 function initialsOf(name: string) {
@@ -15,7 +16,12 @@ function initialsOf(name: string) {
 export default async function MembersPage() {
   const session = await requireOrgAdmin();
   const members = db.select().from(schema.members).all();
-  const pendingInvites = db.select().from(schema.invites).all().filter((i) => !i.redeemedAt);
+  const pendingInvites = db
+    .select({ invite: schema.invites, projectName: schema.projects.name })
+    .from(schema.invites)
+    .leftJoin(schema.projects, eq(schema.invites.projectId, schema.projects.id))
+    .all()
+    .filter((row) => !row.invite.redeemedAt);
 
   return (
     <div>
@@ -134,7 +140,7 @@ export default async function MembersPage() {
           </div>
         ))}
 
-        {pendingInvites.map((invite) => (
+        {pendingInvites.map(({ invite, projectName }) => (
           <div
             key={invite.id}
             style={{
@@ -150,9 +156,20 @@ export default async function MembersPage() {
             <span style={{ font: "500 10.5px/1 'IBM Plex Mono', monospace", color: "var(--acc)", background: "var(--accsoft)", padding: "4px 8px", borderRadius: 6 }}>
               invite pending
             </span>
-            <span style={{ font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+            {projectName && (
+              <span style={{ font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+                for {projectName} &#183; {invite.role}
+              </span>
+            )}
+            <span style={{ marginLeft: "auto", font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
               sent {formatRelativeTime(invite.createdAt)} · not signed in yet
             </span>
+            <form action={revokeInvite}>
+              <input type="hidden" name="inviteId" value={invite.id} />
+              <button type="submit" className="hover-bad" style={{ border: "none", background: "transparent", color: "var(--fg3)", font: "500 11.5px/1 'IBM Plex Sans', sans-serif" }}>
+                Revoke
+              </button>
+            </form>
           </div>
         ))}
       </div>

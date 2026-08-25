@@ -34,9 +34,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       if (!isFirstMember && !pendingInvite) return false;
 
+      const memberId = randomUUID();
       db.insert(schema.members)
         .values({
-          id: randomUUID(),
+          id: memberId,
           email: user.email,
           name: user.name ?? user.email,
           avatarUrl: user.image ?? null,
@@ -50,6 +51,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .set({ redeemedAt: new Date() })
           .where(eq(schema.invites.id, pendingInvite.id))
           .run();
+
+        // Invited from a project's "Add member" flow: grant that project role too.
+        if (pendingInvite.projectId && pendingInvite.role) {
+          db.insert(schema.projectMembers)
+            .values({
+              id: randomUUID(),
+              projectId: pendingInvite.projectId,
+              memberId,
+              role: pendingInvite.role,
+              createdAt: new Date(),
+            })
+            .run();
+        }
       }
 
       return true;

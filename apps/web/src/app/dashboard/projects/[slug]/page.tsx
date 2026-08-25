@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { notFound } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@doctor/db";
 import { requireSession } from "@/lib/session";
 import { getProjectRole } from "@/lib/permissions";
@@ -10,14 +10,17 @@ import {
   addProjectMember,
   disconnectProjectRepo,
   removeProjectMember,
+  revokeInvite,
   triggerBuild,
   updateProjectSettings,
   uploadDocsZip,
+  type AddProjectMemberState,
 } from "@/lib/actions";
 import { StatusDot, BuildRow } from "@/components/build-row";
 import { BuildLog } from "@/components/build-log";
 import { UploadDocsForm } from "@/components/upload-docs-form";
 import { SubmitButton } from "@/components/submit-button";
+import { AddProjectMemberForm } from "@/components/add-project-member-form";
 import type { ProjectRole } from "@doctor/db";
 
 const TABS = ["overview", "source", "builds", "members"] as const;
@@ -80,6 +83,12 @@ export default async function ProjectPage({
     .from(schema.projectMembers)
     .innerJoin(schema.members, eq(schema.projectMembers.memberId, schema.members.id))
     .where(eq(schema.projectMembers.projectId, project.id))
+    .all();
+
+  const pendingInvites = db
+    .select()
+    .from(schema.invites)
+    .where(and(eq(schema.invites.projectId, project.id), isNull(schema.invites.redeemedAt)))
     .all();
 
   const allBuilds = db
@@ -261,8 +270,10 @@ export default async function ProjectPage({
         <MembersTab
           project={project}
           members={members}
+          pendingInvites={pendingInvites}
           canManageMembers={canManageMembers}
           boundAddMember={boundAddMember}
+          orgDomain={orgDomain}
         />
       )}
     </div>
@@ -645,13 +656,17 @@ function BuildsTab({ builds, totalBuildCount }: { builds: (typeof schema.builds.
 function MembersTab({
   project,
   members,
+  pendingInvites,
   canManageMembers,
   boundAddMember,
+  orgDomain,
 }: {
   project: typeof schema.projects.$inferSelect;
   members: { member: typeof schema.members.$inferSelect; role: ProjectRole }[];
+  pendingInvites: (typeof schema.invites.$inferSelect)[];
   canManageMembers: boolean;
-  boundAddMember: (formData: FormData) => Promise<void>;
+  boundAddMember: (prevState: AddProjectMemberState, formData: FormData) => Promise<AddProjectMemberState>;
+  orgDomain: string;
 }) {
   return (
     <div style={{ marginTop: 22, maxWidth: 640 }}>
@@ -690,29 +705,50 @@ function MembersTab({
               </div>
             );
           })}
+          {pendingInvites.map((invite) => (
+            <div
+              key={invite.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 11,
+                padding: "12px 19px",
+                borderBottom: "1px solid var(--line)",
+                background: "var(--bg3)",
+              }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--acc)", flex: "none" }} />
+              <div style={{ minWidth: 0, flex: 1, font: "400 12.5px/1.4 'IBM Plex Mono', monospace", color: "var(--fg2)" }}>
+                {invite.email}
+              </div>
+              <span
+                style={{
+                  font: "500 10.5px/1 'IBM Plex Mono', monospace",
+                  color: "var(--acc)",
+                  background: "var(--accsoft)",
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  flex: "none",
+                }}
+              >
+                invite pending &#183; {invite.role}
+              </span>
+              <span style={{ font: "400 11px/1 'IBM Plex Mono', monospace", color: "var(--fg3)", flex: "none" }}>
+                sent {formatRelativeTime(invite.createdAt)}
+              </span>
+              {canManageMembers && (
+                <form action={revokeInvite}>
+                  <input type="hidden" name="inviteId" value={invite.id} />
+                  <button type="submit" className="hover-bad" style={{ border: "none", background: "transparent", color: "var(--fg3)", font: "500 11.5px/1 'IBM Plex Sans', sans-serif", flex: "none" }}>
+                    Revoke
+                  </button>
+                </form>
+              )}
+            </div>
+          ))}
         </div>
         {canManageMembers && (
-          <form action={boundAddMember} style={{ padding: "13px 19px", display: "flex", alignItems: "center", gap: 9 }}>
-            <input
-              name="email"
-              type="email"
-              placeholder="teammate@example.com"
-              required
-              style={{ flex: 1, minWidth: 0, height: 32, borderRadius: 8, border: "1px solid var(--line2)", background: "var(--bg)", color: "var(--fg)", padding: "0 10px", font: "400 12px/1 'IBM Plex Mono', monospace" }}
-            />
-            <select
-              name="role"
-              defaultValue="viewer"
-              style={{ height: 32, borderRadius: 8, border: "1px solid var(--line2)", background: "var(--bg)", color: "var(--fg)", padding: "0 8px", font: "400 12px/1 'IBM Plex Mono', monospace" }}
-            >
-              <option value="viewer">Viewer</option>
-              <option value="editor">Editor</option>
-              <option value="owner">Owner</option>
-            </select>
-            <button type="submit" className="hover-fg3-line" style={{ height: 32, padding: "0 12px", border: "1px solid var(--line2)", borderRadius: 8, background: "transparent", color: "var(--fg)", font: "500 12px/1 'IBM Plex Sans', sans-serif", flex: "none" }}>
-              Add
-            </button>
-          </form>
+          <AddProjectMemberForm action={boundAddMember} projectId={project.id} orgDomain={orgDomain} />
         )}
         <div style={{ padding: "0 19px 15px", font: "400 11px/1.6 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
           Org admins can act on this project regardless of membership.

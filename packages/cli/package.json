@@ -1,0 +1,25 @@
+{
+  "name": "doctor-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Author, validate, and preview Doctor-format docs (docs.json + .mdx) — plus an MCP server so AI agents can write them correctly.",
+  "bin": {
+    "doctor-docs": "./bin/doctor-docs.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@doctor/docs-core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "commander": "^13.1.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

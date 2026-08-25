@@ -5,8 +5,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { App } from "octokit";
 import { asc, eq } from "drizzle-orm";
-import { copyDir } from "./copy-dir";
-import { migrateDocs } from "./migrate-docs";
+import { copyDir, migrateDocs } from "@doctor/docs-core";
 import { getGithubAppConfig } from "./github-app-config";
 
 // tsx/node don't auto-load .env — do it before importing @doctor/db, since

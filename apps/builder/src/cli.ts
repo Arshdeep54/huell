@@ -1,7 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { copyDir } from "./copy-dir";
-import { migrateDocs } from "./migrate-docs";
+import { copyDir, migrateDocs } from "@doctor/docs-core";
 
 // Standalone migration preview: copies the docs-site template, then converts a
 // A docs/ folder into it, so it can be built and eyeballed on its own.

@@ -1,5 +1,5 @@
 {
-  "name": "huell-docs",
+  "name": "huell",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "node": ">=20"
   },
   "bin": {
-    "huell-docs": "./bin/huell-docs.js"
+    "huell": "./bin/huell.js"
   },
   "files": ["bin", "dist"],
   "scripts": {

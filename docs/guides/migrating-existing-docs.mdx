@@ -23,6 +23,22 @@ If you already have a `docs/` folder — a `docs.json` nav config, `.mdx` pages,
   Rendered as a highlighted button in the top navbar (commonly a GitHub link).
 </ResponseField>
 
+<ResponseField name="logo" type="string | object">
+  Either a single path (e.g. `"/logo/mark.svg"`), or `{light, dark}` for theme-specific variants. Shown top-left on every page, replacing the site title text. The file must live under an `images/`, `logo/`, or `assets/` folder (or loose at the docs root) alongside `docs.json` — those are the only paths copied into the built site. Falls back to Huell's own default mark if unset.
+</ResponseField>
+
+<ResponseField name="favicon" type="string">
+  A path (e.g. `"/favicon.svg"`), same file-location rule as `logo`. Defaults to `/favicon.svg` if a file with that exact name exists at the docs root, even with this field unset.
+</ResponseField>
+
+<ResponseField name="background.color.light" type="string">
+  Override the page/nav/sidebar background for light mode — the whole shell reads as one flat color, rather than just the page background changing on its own.
+</ResponseField>
+
+<ResponseField name="background.color.dark" type="string">
+  Same, for dark mode.
+</ResponseField>
+
 ## Callouts and components
 
 These content components are available in every page without an import — write them exactly as you already have them:

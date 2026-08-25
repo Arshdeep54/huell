@@ -37,7 +37,7 @@ const COMPONENT_NOTES: Record<string, string> = {
 };
 
 export async function runMcp() {
-  const server = new McpServer({ name: "huell-docs", version: "0.1.0" });
+  const server = new McpServer({ name: "huell", version: "0.1.0" });
 
   server.resource("docs-json-schema", "huell://docs-json-schema", async () => ({
     contents: [

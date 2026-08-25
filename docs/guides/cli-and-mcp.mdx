@@ -1,0 +1,79 @@
+---
+title: CLI and MCP server
+description: Author and validate docs locally, and let AI coding agents write them correctly.
+---
+
+`huell` is a companion CLI (and MCP server) for working with a `docs/` folder outside the dashboard — scaffold one, validate it before pushing, preview it locally, or let an AI coding agent write it for you.
+
+<Note>
+  This is entirely optional. Nothing about connecting a repo or uploading a `docs.zip` requires it — it just makes authoring docs locally faster, and gives AI agents a correct, structured way to generate them.
+</Note>
+
+## Commands
+
+<ResponseField name="huell init [dir]" type="command">
+  Scaffolds a new `docs/` folder (defaults to `./docs`) with an example `docs.json`, an `introduction.mdx`, and a `getting-started/installation.mdx` — a minimal starting point that already validates cleanly.
+
+  ```bash
+  npx huell init
+  ```
+</ResponseField>
+
+<ResponseField name="huell validate [dir]" type="command">
+  Checks a `docs/` folder for errors before you push or upload it — runs the exact same migration Huell's build worker runs, against a scratch directory, so a clean result here means the real build will succeed too.
+
+  ```bash
+  npx huell validate ./docs
+  ```
+</ResponseField>
+
+<ResponseField name="huell preview [dir]" type="command">
+  Runs a hot-reloading local preview of a `docs/` folder, so you can see exactly what it'll look like before publishing.
+
+  ```bash
+  npx huell preview ./docs
+  ```
+
+  <Warning>
+    Preview currently only works run from inside the Huell monorepo (it borrows the real `templates/docs-site` template directly) — it isn't yet bundled standalone for a plain `npm install -g huell` outside the repo.
+  </Warning>
+</ResponseField>
+
+<ResponseField name="huell mcp" type="command">
+  Starts an MCP server over stdio — not something you run directly, this is what an AI coding agent's config launches for you.
+</ResponseField>
+
+## Using the MCP server with an agent
+
+Add this to your agent's MCP server config (Claude Code, Claude Desktop, Cursor, or anything else that speaks MCP):
+
+```json
+{
+  "mcpServers": {
+    "huell": {
+      "command": "npx",
+      "args": ["-y", "huell", "mcp"]
+    }
+  }
+}
+```
+
+`npx` fetches the package from the npm registry the first time it's used — no cloning this repo, no global install.
+
+### What the agent gets
+
+<ResponseField name="docs-json-schema (resource)" type="huell://docs-json-schema">
+  A full description of every `docs.json` field, with an example — the same fields documented in [Migrating existing docs](/guides/migrating-existing-docs).
+</ResponseField>
+
+<ResponseField name="components (resource)" type="huell://components">
+  The list of MDX components available with no import (`Note`, `Tip`, `Card`, `Steps`, ...), including a note that `CodeGroup` doesn't yet tab-switch between code blocks.
+</ResponseField>
+
+<ResponseField name="validate_docs (tool)" type="tool">
+  Takes a `path` to a `docs/` folder, runs the same validation as `huell validate`, and returns errors/warnings as structured JSON — lets an agent check its own output before handing it back to you.
+</ResponseField>
+
+<Tip>
+  Point an agent at a task like "write me a docs.json and an introduction page for this project" and it can read the schema resource, generate valid MDX using only supported components, and self-check it with `validate_docs` before finishing — instead of guessing at a format it's never seen.
+</Tip>

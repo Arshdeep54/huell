@@ -10,6 +10,7 @@ import {
   addProjectMember,
   disconnectProjectRepo,
   removeProjectMember,
+  renameProject,
   revokeInvite,
   triggerBuild,
   updateProjectSettings,
@@ -109,6 +110,7 @@ export default async function ProjectPage({
   const docsSubdomainSeparator = process.env.DOCS_SUBDOMAIN_SEPARATOR === "-" ? "-" : ".";
   const docsHost = `${project.slug}${docsSubdomainSeparator}docs.${orgDomain}`;
   const boundUpdateSettings = updateProjectSettings.bind(null, project.id);
+  const boundRenameProject = renameProject.bind(null, project.id);
   const boundAddMember = addProjectMember.bind(null, project.id);
   const boundTriggerBuild = triggerBuild.bind(null, project.id);
   const boundUploadDocsZip = uploadDocsZip.bind(null, project.id);
@@ -261,6 +263,7 @@ export default async function ProjectPage({
           boundUpdateSettings={boundUpdateSettings}
           boundUploadDocsZip={boundUploadDocsZip}
           boundDisconnectRepo={boundDisconnectRepo}
+          boundRenameProject={boundRenameProject}
         />
       )}
 
@@ -500,6 +503,7 @@ function SourceTab({
   boundUpdateSettings,
   boundUploadDocsZip,
   boundDisconnectRepo,
+  boundRenameProject,
 }: {
   project: typeof schema.projects.$inferSelect;
   canEdit: boolean;
@@ -509,9 +513,42 @@ function SourceTab({
   boundUpdateSettings: (formData: FormData) => Promise<void>;
   boundUploadDocsZip: (formData: FormData) => Promise<void>;
   boundDisconnectRepo: () => Promise<void>;
+  boundRenameProject: (formData: FormData) => Promise<void>;
 }) {
   return (
     <div style={{ marginTop: 22, maxWidth: 940 }}>
+      {canManageMembers && (
+        <section style={{ border: "1px solid var(--line)", borderRadius: 14, background: "var(--bg2)", boxShadow: "var(--dc-shadow)", overflow: "hidden", marginBottom: 22 }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10 }}>
+            <h2 style={{ margin: 0, font: "600 13.5px/1 'IBM Plex Sans', sans-serif" }}>Project</h2>
+            <span style={{ font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>name and URL</span>
+          </div>
+          <form action={boundRenameProject} style={{ padding: 20 }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 320 }}>
+              <span style={{ font: "500 11px/1 'IBM Plex Mono', monospace", color: "var(--fg3)", letterSpacing: "0.04em" }}>NAME</span>
+              <input
+                name="name"
+                defaultValue={project.name}
+                style={{ height: 34, borderRadius: 8, border: "1px solid var(--line2)", background: "var(--bg)", color: "var(--fg)", padding: "0 11px", font: "400 12.5px/1 'IBM Plex Mono', monospace" }}
+              />
+            </label>
+            <div style={{ marginTop: 8, font: "400 11.5px/1.4 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+              Renaming changes the project's slug and docs URL — the built site moves with it, but any existing
+              links to <code>{docsHost}</code> will stop working.
+            </div>
+            <div style={{ marginTop: 15 }}>
+              <SubmitButton
+                pendingLabel="Renaming…"
+                className="hover-brighten"
+                style={{ height: 32, padding: "0 13px", border: "none", borderRadius: 8, background: "var(--acc)", color: "var(--accfg)", font: "600 12px/1 'IBM Plex Sans', sans-serif" }}
+              >
+                Rename
+              </SubmitButton>
+            </div>
+          </form>
+        </section>
+      )}
+
       {canEdit && docsSubdomainSeparator === "-" && (
         <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 22, padding: "14px 16px", border: "1px solid var(--line)", borderRadius: 11, background: "var(--bg3)" }}>
           <span style={{ font: "500 10px/1.6 'IBM Plex Mono', monospace", color: "var(--fg3)", letterSpacing: "0.08em", textTransform: "uppercase", flex: "none", paddingTop: 1 }}>

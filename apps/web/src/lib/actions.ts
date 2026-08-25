@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
 import AdmZip from "adm-zip";
 import { revalidatePath } from "next/cache";
@@ -195,6 +195,38 @@ export async function updateProjectSettings(projectId: string, formData: FormDat
 
   db.update(schema.projects).set({ branch, docsPath }).where(eq(schema.projects.id, projectId)).run();
   revalidatePath(`/dashboard/projects`);
+}
+
+export async function renameProject(projectId: string, formData: FormData) {
+  const session = await requireSession();
+  if (!hasProjectRole(session.user.id, projectId, "owner", session.user.isOrgAdmin)) {
+    throw new Error("Only project owners can rename a project.");
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Project name is required.");
+
+  const slug = slugify(name);
+  if (!slug) throw new Error("Project name must contain letters or numbers.");
+
+  const project = db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).get();
+  if (!project) throw new Error("Project not found.");
+
+  if (slug !== project.slug) {
+    const existing = db.select().from(schema.projects).where(eq(schema.projects.slug, slug)).get();
+    if (existing) throw new Error("A project with this name already exists.");
+
+    // The built site lives at data/sites/<slug> — the docs subdomain is
+    // derived from this same slug, so it has to move with the rename or
+    // the new URL would serve nothing until the next build.
+    const dataDir = process.env.DATA_DIR ?? "./data";
+    const oldSiteDir = path.join(dataDir, "sites", project.slug);
+    const newSiteDir = path.join(dataDir, "sites", slug);
+    if (existsSync(oldSiteDir)) renameSync(oldSiteDir, newSiteDir);
+  }
+
+  db.update(schema.projects).set({ name, slug }).where(eq(schema.projects.id, projectId)).run();
+  redirect(`/dashboard/projects/${slug}`);
 }
 
 export async function disconnectProjectRepo(projectId: string) {

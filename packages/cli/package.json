@@ -1,6 +1,6 @@
 {
   "name": "huellup",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Author, validate, and preview Huell-format docs (docs.json + .mdx) — plus an MCP server so AI agents can write them correctly.",
   "keywords": ["docs", "documentation", "starlight", "astro", "mcp", "model-context-protocol"],

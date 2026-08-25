@@ -45,18 +45,7 @@ Project subdomains aren't known ahead of time — a new one exists the moment an
   Without that check, anyone who pointed DNS at your server would be able to get a free, valid certificate minted through your infrastructure for a domain they don't actually run through Doctor. The check is what keeps on-demand TLS safe to leave on.
 </Warning>
 
-That check is a single route (simplified below — the actual implementation lives at `apps/web/src/app/api/caddy/ask-domain/route.ts`):
-
-```ts
-export async function GET(request) {
-  const domain = request.nextUrl.searchParams.get("domain");
-  const slug = domain.replace(`.docs.${orgDomain}`, "");
-  const project = db.select().from(projects).where(eq(projects.slug, slug)).get();
-  return project ? new Response("OK", { status: 200 }) : new Response("Forbidden", { status: 403 });
-}
-```
-
-Everything that decides whether a hostname is legitimate lives in that one route, in the app — Caddy itself stays dumb about projects, members, or anything else in the database.
+That check is a single route — `apps/web/src/app/api/caddy/ask-domain/route.ts` — and it does exactly one thing: strip the project suffix off the requested hostname, look up whether a project with that slug actually exists, and answer yes or no. Everything that decides whether a hostname is legitimate lives in that one route, in the app — Caddy itself stays dumb about projects, members, or anything else in the database.
 
 ## Why one wildcard record covers every project
 
@@ -65,6 +54,10 @@ Because every project lives under the same suffix (`*.docs.<ORG_DOMAIN>`), a sin
 <Note>
   See [Installation](/getting-started/installation) for the exact DNS records to add, and [Configuration](/getting-started/configuration) for what `ORG_DOMAIN` and `DASHBOARD_URL` control.
 </Note>
+
+<Warning>
+  This assumes the default `<slug>.docs.<ORG_DOMAIN>` pattern. On a [tunnel deployment](/guides/tunnel-deployment) without wildcard certificate coverage, `DOCS_SUBDOMAIN_SEPARATOR=-` switches every project to `<slug>-docs.<ORG_DOMAIN>` instead — and that pattern can't be wildcarded at all (a wildcard can only ever match one whole label), so each project needs its own exact DNS route.
+</Warning>
 
 ## Data
 

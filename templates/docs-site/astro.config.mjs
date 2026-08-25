@@ -39,6 +39,14 @@ export default defineConfig({
 		starlight({
 			title: nav.name,
 			sidebar,
+			// A project's docs.json can set its own logo/favicon; when it doesn't,
+			// fall back to Doctor's own default mark rather than showing no logo at all.
+			logo: nav.logo
+				? typeof nav.logo === 'string'
+					? { src: nav.logo }
+					: { light: nav.logo.light, dark: nav.logo.dark }
+				: { light: './src/assets/branding/default-light.svg', dark: './src/assets/branding/default-dark.svg' },
+			favicon: nav.favicon,
 			components: {
 				Header: './src/components/Header.astro',
 				Head: './src/components/Head.astro',

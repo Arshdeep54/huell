@@ -57,4 +57,7 @@ export function runInit(targetDir: string) {
   console.log("");
   console.log("Next: doctor-docs preview   (see it rendered, hot-reloading)");
   console.log("      doctor-docs validate  (check it before publishing)");
+  console.log("");
+  console.log('Tip: add a logo by setting "logo" (and "favicon") in docs.json, with the');
+  console.log("     file placed under a logo/, images/, or assets/ folder here.");
 }

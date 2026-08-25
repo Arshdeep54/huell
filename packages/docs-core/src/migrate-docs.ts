@@ -18,10 +18,14 @@ export interface DoctorNavLink {
   href: string;
 }
 
+export type DoctorLogo = string | { light: string; dark: string };
+
 export interface DoctorNav {
   name: string;
   siteUrl: string;
   accentColor?: string;
+  logo?: DoctorLogo;
+  favicon?: string;
   navLinks: DoctorNavLink[];
   navPrimary?: DoctorNavLink;
   tabs: DoctorNavTab[];
@@ -40,6 +44,8 @@ interface SourceDocsJson {
   name?: string;
   navigation: { tabs?: SourceTab[]; groups?: SourceGroup[] } | SourceGroup[];
   colors?: { primary?: string };
+  logo?: DoctorLogo;
+  favicon?: string;
   navbar?: {
     links?: { label: string; href: string }[];
     primary?: { label: string; href: string };
@@ -124,6 +130,23 @@ function injectComponentImport(mdxSource: string, relativeImportPath: string): s
   return mdxSource.slice(0, end) + "\n" + importLine + mdxSource.slice(end);
 }
 
+// Starlight's `logo` option (unlike `favicon`) always runs the image through
+// Astro/Vite's own import pipeline — a plain public-folder URL string throws
+// "ImageNotFound" at build time. So the referenced file needs a second copy
+// into src/assets (an importable location), and the config needs to point at
+// that copy via a relative import path instead of the public URL the user wrote.
+function resolveLogoForImport(sourceDocsDir: string, destSiteDir: string, logoPath: string, warnings: string[]): string | undefined {
+  const sourceFile = path.join(sourceDocsDir, logoPath.replace(/^\//, ""));
+  if (!existsSync(sourceFile)) {
+    warnings.push(`logo file "${logoPath}" not found — logo skipped.`);
+    return undefined;
+  }
+  const destFile = path.join(destSiteDir, "src", "assets", "branding", path.basename(logoPath));
+  mkdirSync(path.dirname(destFile), { recursive: true });
+  writeFileSync(destFile, readFileSync(sourceFile));
+  return `./src/assets/branding/${path.basename(logoPath)}`;
+}
+
 function copyStaticAssets(sourceDocsDir: string, publicDir: string, warnings: string[]) {
   if (!existsSync(sourceDocsDir)) return;
   for (const entry of readdirSync(sourceDocsDir)) {
@@ -170,10 +193,23 @@ export function migrateDocs(options: {
   const docsJson = JSON.parse(readFileSync(docsJsonPath, "utf-8")) as SourceDocsJson;
 
   const tabs = normalizeTabs(docsJson, warnings);
+
+  let logo: DoctorLogo | undefined;
+  if (typeof docsJson.logo === "string") {
+    const resolved = resolveLogoForImport(sourceDocsDir, destSiteDir, docsJson.logo, warnings);
+    if (resolved) logo = resolved;
+  } else if (docsJson.logo) {
+    const light = resolveLogoForImport(sourceDocsDir, destSiteDir, docsJson.logo.light, warnings);
+    const dark = resolveLogoForImport(sourceDocsDir, destSiteDir, docsJson.logo.dark, warnings);
+    if (light && dark) logo = { light, dark };
+  }
+
   const nav: DoctorNav = {
     name: docsJson.name ?? projectName,
     siteUrl,
     accentColor: docsJson.colors?.primary,
+    logo,
+    favicon: docsJson.favicon,
     navLinks: docsJson.navbar?.links ?? [],
     navPrimary: docsJson.navbar?.primary,
     tabs,

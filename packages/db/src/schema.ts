@@ -22,14 +22,6 @@ export const githubAppConfig = sqliteTable("github_app_config", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
-export const invites = sqliteTable("invites", {
-  id: text("id").primaryKey(),
-  email: text("email").notNull().unique(),
-  invitedBy: text("invited_by").notNull().references(() => members.id),
-  redeemedAt: integer("redeemed_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-});
-
 export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -43,6 +35,19 @@ export const projects = sqliteTable("projects", {
 
 export const projectRoles = ["owner", "editor", "viewer"] as const;
 export type ProjectRole = (typeof projectRoles)[number];
+
+export const invites = sqliteTable("invites", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  invitedBy: text("invited_by").notNull().references(() => members.id),
+  // Set when the invite was created from a project's "Add member" flow rather
+  // than the org-wide Members page: on redeem, the invitee is added to this
+  // project with this role, in addition to becoming an org member.
+  projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  role: text("role", { enum: projectRoles }),
+  redeemedAt: integer("redeemed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
 
 export const projectMembers = sqliteTable("project_members", {
   id: text("id").primaryKey(),

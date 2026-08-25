@@ -16,7 +16,15 @@
 
 	@docs_dot host *.docs.{$ORG_DOMAIN}
 	handle @docs_dot {
-		root * /srv/sites/{http.request.host.labels.1}
+		# {http.request.host.labels.N} is indexed from the right (TLD = 0), so a
+		# fixed index only happens to work when ORG_DOMAIN itself has exactly one
+		# label — wrong for the common case (e.g. "example.com"). Strip the known
+		# ".docs.<ORG_DOMAIN>" suffix instead, which is correct regardless of how
+		# many labels ORG_DOMAIN has.
+		map {host} {project_slug} {
+			~^(.+)\.docs\.{$ORG_DOMAIN}$ "${1}"
+		}
+		root * /srv/sites/{project_slug}
 		file_server
 		try_files {path} {path}/index.html {path}.html /404.html
 	}

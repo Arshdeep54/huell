@@ -2,12 +2,6 @@
 # that needs to be correct (which subdomain maps to which project, whether a
 # hostname is legitimate) lives in the Next.js app, not here — Caddy just
 # proxies the dashboard and serves static files for project docs sites.
-#
-# NOTE: the on-demand TLS + host-label pattern below follows Caddy's
-# documented convention for "one wildcard cert flow per dynamic subdomain".
-# It hasn't been smoke-tested against a live Caddy instance in this session
-# (no way to do that here) — verify it against a real deploy before relying
-# on it in production.
 {
 	on_demand_tls {
 		ask http://app:3000/api/caddy/ask-domain
@@ -27,7 +21,15 @@
 	tls {
 		on_demand
 	}
-	root * /srv/sites/{http.request.host.labels.1}
+	# {http.request.host.labels.N} is indexed from the right (TLD = 0), so a
+	# fixed index only happens to work when ORG_DOMAIN itself has exactly one
+	# label — wrong for the common case (e.g. "example.com"). Strip the known
+	# ".docs.<ORG_DOMAIN>" suffix instead, which is correct regardless of how
+	# many labels ORG_DOMAIN has.
+	map {host} {project_slug} {
+		~^(.+)\.docs\.{$ORG_DOMAIN}$ "${1}"
+	}
+	root * /srv/sites/{project_slug}
 	file_server
 	try_files {path} /404.html
 }

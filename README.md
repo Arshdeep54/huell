@@ -8,6 +8,11 @@
 
 A self-hostable docs platform: connect a GitHub repo (or just upload a `docs.zip`), and Huell builds and publishes a clean, searchable docs site for it — on your own server, under your own domain, with no vendor lock-in.
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/huellup"><img alt="npm version" src="https://img.shields.io/npm/v/huellup.svg"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
+
 Huell is one deployable instance per organization. There's no shared multi-tenant service — you run it, you own the data, you own the infrastructure.
 
 ## Why

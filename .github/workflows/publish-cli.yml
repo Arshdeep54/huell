@@ -35,7 +35,11 @@ jobs:
 
       - run: pnpm --filter huellup build
 
+      # Authenticates via OIDC trusted publishing (configured on npmjs.com
+      # for this exact repo + workflow filename) — no stored token needed.
+      # Requires a recent npm CLI; the version bundled with actions/setup-node
+      # isn't guaranteed to support it yet.
+      - run: npm install -g npm@latest
+
       - run: npm publish --access public --provenance
         working-directory: packages/cli
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

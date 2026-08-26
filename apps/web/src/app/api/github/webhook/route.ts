@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Webhooks } from "@octokit/webhooks";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { db, schema } from "@huell/db";
 import { getGithubAppConfig } from "@/lib/github-app";
 
@@ -22,14 +22,20 @@ export async function POST(request: NextRequest) {
   const payload = JSON.parse(body) as {
     ref: string;
     after: string;
-    repository: { full_name: string };
+    repository: { id: number; full_name: string };
   };
   const branch = payload.ref.replace("refs/heads/", "");
 
+  // Match on GitHub's stable repo ID first — repoFullName goes stale the
+  // moment someone renames the repo on GitHub's side, since the webhook
+  // payload always carries the *current* name. The full_name match is a
+  // fallback for any project connected before repoId started being stored.
   const project = db
     .select()
     .from(schema.projects)
-    .where(eq(schema.projects.repoFullName, payload.repository.full_name))
+    .where(
+      or(eq(schema.projects.repoId, payload.repository.id), eq(schema.projects.repoFullName, payload.repository.full_name)),
+    )
     .get();
   if (!project || project.branch !== branch) return NextResponse.json({ ok: true, skipped: true });
 

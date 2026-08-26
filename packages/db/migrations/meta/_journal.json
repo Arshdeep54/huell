@@ -36,6 +36,13 @@
       "when": 1787719373658,
       "tag": "0004_premium_silver_centurion",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1787739901116,
+      "tag": "0005_gray_praxagora",
+      "breakpoints": true
     }
   ]
 }

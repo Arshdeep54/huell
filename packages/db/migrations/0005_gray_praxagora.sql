@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `repo_id` integer;

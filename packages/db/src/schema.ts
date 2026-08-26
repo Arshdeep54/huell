@@ -38,6 +38,11 @@ export const projects = sqliteTable("projects", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   repoFullName: text("repo_full_name"),
+  // GitHub's stable numeric repo ID — used to match incoming webhooks
+  // instead of repoFullName, which goes stale the moment someone renames
+  // the repo on GitHub's side (the webhook payload always carries the
+  // *current* name, so a stale stored name silently stops matching).
+  repoId: integer("repo_id"),
   branch: text("branch").notNull().default("main"),
   docsPath: text("docs_path").notNull().default("docs"),
   // Ask search engines not to index this project's docs (noindex meta tag +

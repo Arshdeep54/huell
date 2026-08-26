@@ -50,7 +50,7 @@ export default async function SelectRepoPage({ params }: { params: Promise<{ slu
                   key={repo.id}
                   className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-accent"
                 >
-                  <input type="radio" name="repoFullName" value={repo.full_name} required className="accent-primary" />
+                  <input type="radio" name="repo" value={`${repo.id}:${repo.full_name}`} required className="accent-primary" />
                   {repo.full_name}
                 </label>
               ))}

@@ -277,7 +277,7 @@ export async function disconnectProjectRepo(projectId: string) {
   if (!hasProjectRole(session.user.id, projectId, "owner", session.user.isOrgAdmin)) {
     throw new Error("Only project owners can disconnect the repository.");
   }
-  db.update(schema.projects).set({ repoFullName: null }).where(eq(schema.projects.id, projectId)).run();
+  db.update(schema.projects).set({ repoFullName: null, repoId: null }).where(eq(schema.projects.id, projectId)).run();
   revalidatePath(`/dashboard/projects`);
 }
 
@@ -287,10 +287,13 @@ export async function selectProjectRepo(projectId: string, formData: FormData) {
     throw new Error("Only project owners can set the connected repository.");
   }
 
-  const repoFullName = String(formData.get("repoFullName") ?? "");
-  if (!repoFullName) throw new Error("Pick a repository.");
+  const repo = String(formData.get("repo") ?? "");
+  const separatorIndex = repo.indexOf(":");
+  const repoId = repo.slice(0, separatorIndex);
+  const repoFullName = repo.slice(separatorIndex + 1);
+  if (!repoId || !repoFullName) throw new Error("Pick a repository.");
 
-  db.update(schema.projects).set({ repoFullName }).where(eq(schema.projects.id, projectId)).run();
+  db.update(schema.projects).set({ repoFullName, repoId: Number(repoId) }).where(eq(schema.projects.id, projectId)).run();
 
   const project = db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).get();
   redirect(`/dashboard/projects/${project?.slug}`);

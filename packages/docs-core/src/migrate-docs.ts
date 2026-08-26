@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import { checkLinks } from "./check-links";
 
 export interface HuellNavGroup {
   label: string;
@@ -30,6 +31,7 @@ export interface HuellNav {
   navLinks: HuellNavLink[];
   navPrimary?: HuellNavLink;
   tabs: HuellNavTab[];
+  noindex?: boolean;
 }
 
 type SourcePage = string | { group: string; pages: SourcePage[] };
@@ -110,7 +112,7 @@ function normalizeTabs(docsJson: SourceDocsJson, warnings: string[]): HuellNavTa
   throw new Error("Unrecognized docs.json navigation shape.");
 }
 
-function findSourceFile(docsDir: string, page: string): string | null {
+export function findSourceFile(docsDir: string, page: string): string | null {
   for (const ext of [".mdx", ".md"]) {
     const candidate = path.join(docsDir, `${page}${ext}`);
     if (existsSync(candidate)) return candidate;
@@ -184,8 +186,9 @@ export function migrateDocs(options: {
   destSiteDir: string;
   siteUrl: string;
   projectName: string;
-}): { warnings: string[] } {
-  const { sourceDocsDir, destSiteDir, siteUrl, projectName } = options;
+  noindex?: boolean;
+}): { warnings: string[]; linkErrors: string[] } {
+  const { sourceDocsDir, destSiteDir, siteUrl, projectName, noindex = false } = options;
   const warnings: string[] = [];
 
   const docsJsonPath = path.join(sourceDocsDir, "docs.json");
@@ -216,6 +219,7 @@ export function migrateDocs(options: {
     navLinks: docsJson.navbar?.links ?? [],
     navPrimary: docsJson.navbar?.primary,
     tabs,
+    noindex,
   };
 
   const contentDir = path.join(destSiteDir, "src", "content", "docs");
@@ -259,5 +263,15 @@ export function migrateDocs(options: {
   copyStaticAssets(sourceDocsDir, path.join(destSiteDir, "public"), warnings);
   writeFileSync(path.join(destSiteDir, "nav.config.json"), JSON.stringify(nav, null, 2));
 
-  return { warnings };
+  // public/ persists across builds (only contentDir above is wiped), so this
+  // has to be written every time — otherwise toggling noindex off would
+  // leave a stale disallow-all robots.txt from a previous build in place.
+  const publicDir = path.join(destSiteDir, "public");
+  mkdirSync(publicDir, { recursive: true });
+  writeFileSync(path.join(publicDir, "robots.txt"), noindex ? "User-agent: *\nDisallow: /\n" : "User-agent: *\nAllow: /\n");
+
+  const { warnings: linkWarnings, errors: linkErrors } = checkLinks(sourceDocsDir, tabs, findSourceFile);
+  warnings.push(...linkWarnings);
+
+  return { warnings, linkErrors };
 }

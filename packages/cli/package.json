@@ -1,31 +1,40 @@
 {
   "name": "huellup",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "Author, validate, and preview Huell-format docs (docs.json + .mdx) — plus an MCP server so AI agents can write them correctly.",
   "keywords": ["docs", "documentation", "starlight", "astro", "mcp", "model-context-protocol"],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Arshdeep54/doctor",
+    "url": "git+https://github.com/Arshdeep54/huell.git",
     "directory": "packages/cli"
   },
   "engines": {
     "node": ">=20"
   },
   "bin": {
-    "huellup": "./bin/huellup.js"
+    "huellup": "bin/huellup.js"
   },
-  "files": ["bin", "dist"],
+  "files": ["bin", "dist", "docs-site-template"],
   "scripts": {
     "dev": "tsx src/cli.ts",
-    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --outfile=dist/cli.js --external:commander --external:zod --external:@modelcontextprotocol/sdk --external:gray-matter",
-    "prepublishOnly": "pnpm build"
+    "bundle-template": "node scripts/bundle-template.mjs",
+    "build": "pnpm bundle-template && esbuild src/cli.ts --bundle --platform=node --format=esm --outfile=dist/cli.js --external:commander --external:zod --external:@modelcontextprotocol/sdk --external:gray-matter",
+    "prepublishOnly": "pnpm build",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@astrojs/starlight": "^0.41.7",
     "@modelcontextprotocol/sdk": "^1.9.0",
+    "astro": "^7.1.6",
     "commander": "^13.1.0",
     "gray-matter": "^4.0.3",
+    "katex": "^0.16.11",
+    "mermaid": "^11.4.1",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
+    "sharp": "^0.35.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {

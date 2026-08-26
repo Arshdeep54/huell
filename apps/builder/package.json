@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
-    "migrate-docs": "tsx src/cli.ts"
+    "migrate-docs": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@huell/db": "workspace:*",

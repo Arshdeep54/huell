@@ -37,9 +37,10 @@ jobs:
 
       # Authenticates via OIDC trusted publishing (configured on npmjs.com
       # for this exact repo + workflow filename) — no stored token needed.
-      # Requires a recent npm CLI; the version bundled with actions/setup-node
-      # isn't guaranteed to support it yet.
-      - run: npm install -g npm@latest
+      # Requires npm >=11.5.1 (added OIDC support); pinned to the 11.x line
+      # rather than "latest" since npm 12 requires Node >=22, newer than
+      # the Node 20 pinned above.
+      - run: npm install -g npm@11
 
       - run: npm publish --access public --provenance
         working-directory: packages/cli

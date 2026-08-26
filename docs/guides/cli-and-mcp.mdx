@@ -20,10 +20,11 @@ description: Author and validate docs locally, and let AI coding agents write th
 </ResponseField>
 
 <ResponseField name="huellup validate [dir]" type="command">
-  Checks a `docs/` folder for errors before you push or upload it — runs the exact same migration Huell's build worker runs, against a scratch directory, so a clean result here means the real build will succeed too.
+  Checks a `docs/` folder for errors before you push or upload it — runs the exact same migration Huell's build worker runs, against a scratch directory, so a clean result here means the real build will succeed too. This includes a broken-link check: an internal link to a page that doesn't exist is a warning by default, but a link to `localhost` or any local address always fails validation outright, since that can never resolve for a real reader.
 
   ```bash
   npx huellup validate ./docs
+  npx huellup validate ./docs --strict   # also fail on warnings, not just errors
   ```
 </ResponseField>
 

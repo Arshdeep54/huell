@@ -54,3 +54,15 @@ Org admins can do all of the above on every project, regardless of whether they'
 <Note>
   A project owner can rename a project from its **Source & settings** tab. Renaming changes the project's slug, which changes its docs URL — the built site moves with it, but any existing links to the old URL stop working.
 </Note>
+
+## Visibility and broken links
+
+Also on **Source & settings**, two per-project toggles (take effect on the next build):
+
+<ResponseField name="Don't index this project" type="toggle">
+  Adds `noindex, nofollow` to every page and serves a disallow-all `robots.txt`, while keeping the site itself publicly reachable — for a project you don't want search engines picking up.
+</ResponseField>
+
+<ResponseField name="Fail builds on broken links" type="toggle">
+  Every build already checks internal links against known pages and logs warnings for anything broken (this behind-the-scenes check is the same one [`huellup validate`](/guides/cli-and-mcp) runs). With this on, a broken link fails the build instead of just warning. A link to `localhost` or any local address fails the build either way, regardless of this setting — that kind of link can never resolve for a real reader.
+</ResponseField>

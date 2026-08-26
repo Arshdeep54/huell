@@ -42,8 +42,5 @@ jobs:
       # the Node 20 pinned above.
       - run: npm install -g npm@11
 
-      # No --provenance: it requires a public source repo to verify
-      # against, and this repo is currently private. Add it back once the
-      # repo goes public.
-      - run: npm publish --access public
+      - run: npm publish --access public --provenance
         working-directory: packages/cli

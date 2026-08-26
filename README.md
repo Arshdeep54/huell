@@ -17,7 +17,7 @@ Huell is one deployable instance per organization. There's no shared multi-tenan
 
 ## Why
 
-Popular hosted docs platforms are great for authoring, but self-hosting at their enterprise tier often means a Kubernetes-scale deployment (MongoDB + PostgreSQL + Redis + object storage, 45–60 vCPUs) built for companies running dozens of large public docs sites. Huell targets the much more common case: a small team that wants their docs content (MDX + a nav config) built and served without a vendor contract or that much infrastructure. The whole stack is designed to run comfortably on a single small VM.
+Popular hosted docs platforms are great for authoring, but self-hosting at their enterprise tier often means a Kubernetes-scale deployment (MongoDB + PostgreSQL + Redis + object storage, 45–60 vCPUs) — built for running dozens of large public docs sites off one shared, multi-tenant install. Huell targets the far more common case: one org's docs, built and served without a vendor contract or that much infrastructure, whether that's a two-person team or a large company that doesn't need a multi-tenant docs cluster. The whole stack runs comfortably on a single small VM, and scales by giving it a bigger VM — not by adding new services.
 
 ## Features
 

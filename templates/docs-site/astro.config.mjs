@@ -71,9 +71,10 @@ export default defineConfig({
 				Sidebar: './src/components/Sidebar.astro',
 			},
 			customCss: ['./src/styles/theme.css'],
-			head: [accentOverrideCss, backgroundOverrideCss]
-				.filter(Boolean)
-				.map((content) => ({ tag: 'style', content })),
+			head: [
+				...[accentOverrideCss, backgroundOverrideCss].filter(Boolean).map((content) => ({ tag: 'style', content })),
+				...(nav.noindex ? [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' } }] : []),
+			],
 		}),
 	],
 });

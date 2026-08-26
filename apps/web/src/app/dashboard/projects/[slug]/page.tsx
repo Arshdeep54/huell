@@ -14,6 +14,7 @@ import {
   revokeInvite,
   triggerBuild,
   updateProjectSettings,
+  updateProjectVisibility,
   uploadDocsZip,
   type AddProjectMemberState,
 } from "@/lib/actions";
@@ -110,6 +111,7 @@ export default async function ProjectPage({
   const docsSubdomainSeparator = process.env.DOCS_SUBDOMAIN_SEPARATOR === "-" ? "-" : ".";
   const docsHost = `${project.slug}${docsSubdomainSeparator}docs.${orgDomain}`;
   const boundUpdateSettings = updateProjectSettings.bind(null, project.id);
+  const boundUpdateVisibility = updateProjectVisibility.bind(null, project.id);
   const boundRenameProject = renameProject.bind(null, project.id);
   const boundAddMember = addProjectMember.bind(null, project.id);
   const boundTriggerBuild = triggerBuild.bind(null, project.id);
@@ -261,6 +263,7 @@ export default async function ProjectPage({
           docsHost={docsHost}
           docsSubdomainSeparator={docsSubdomainSeparator}
           boundUpdateSettings={boundUpdateSettings}
+          boundUpdateVisibility={boundUpdateVisibility}
           boundUploadDocsZip={boundUploadDocsZip}
           boundDisconnectRepo={boundDisconnectRepo}
           boundRenameProject={boundRenameProject}
@@ -501,6 +504,7 @@ function SourceTab({
   docsSubdomainSeparator,
   docsHost,
   boundUpdateSettings,
+  boundUpdateVisibility,
   boundUploadDocsZip,
   boundDisconnectRepo,
   boundRenameProject,
@@ -511,6 +515,7 @@ function SourceTab({
   docsSubdomainSeparator: string;
   docsHost: string;
   boundUpdateSettings: (formData: FormData) => Promise<void>;
+  boundUpdateVisibility: (formData: FormData) => Promise<void>;
   boundUploadDocsZip: (formData: FormData) => Promise<void>;
   boundDisconnectRepo: () => Promise<void>;
   boundRenameProject: (formData: FormData) => Promise<void>;
@@ -543,6 +548,46 @@ function SourceTab({
                 style={{ height: 32, padding: "0 13px", border: "none", borderRadius: 8, background: "var(--acc)", color: "var(--accfg)", font: "600 12px/1 'IBM Plex Sans', sans-serif" }}
               >
                 Rename
+              </SubmitButton>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {canEdit && (
+        <section style={{ border: "1px solid var(--line)", borderRadius: 14, background: "var(--bg2)", boxShadow: "var(--dc-shadow)", overflow: "hidden", marginBottom: 22 }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10 }}>
+            <h2 style={{ margin: 0, font: "600 13.5px/1 'IBM Plex Sans', sans-serif" }}>Visibility</h2>
+            <span style={{ font: "400 11.5px/1 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>search indexing and link checking</span>
+          </div>
+          <form action={boundUpdateVisibility} style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <input type="checkbox" name="noindex" defaultChecked={project.noindex} style={{ marginTop: 3 }} />
+              <span>
+                <span style={{ display: "block", font: "500 13px/1.3 'IBM Plex Sans', sans-serif" }}>Don't index this project</span>
+                <span style={{ display: "block", marginTop: 2, font: "400 11.5px/1.4 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+                  Ask search engines not to index this site, while keeping it publicly reachable. Sets noindex/nofollow tags and a
+                  disallow-all robots.txt. Takes effect on the next build.
+                </span>
+              </span>
+            </label>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <input type="checkbox" name="failOnBrokenLinks" defaultChecked={project.failOnBrokenLinks} style={{ marginTop: 3 }} />
+              <span>
+                <span style={{ display: "block", font: "500 13px/1.3 'IBM Plex Sans', sans-serif" }}>Fail builds on broken links</span>
+                <span style={{ display: "block", marginTop: 2, font: "400 11.5px/1.4 'IBM Plex Mono', monospace", color: "var(--fg3)" }}>
+                  Every build checks internal links against known pages and warns on anything broken. On, a broken link fails the
+                  build instead. A link to a local address (e.g. localhost) always fails the build, regardless of this setting.
+                </span>
+              </span>
+            </label>
+            <div>
+              <SubmitButton
+                pendingLabel="Saving…"
+                className="hover-brighten"
+                style={{ height: 32, padding: "0 13px", border: "none", borderRadius: 8, background: "var(--acc)", color: "var(--accfg)", font: "600 12px/1 'IBM Plex Sans', sans-serif" }}
+              >
+                Save
               </SubmitButton>
             </div>
           </form>

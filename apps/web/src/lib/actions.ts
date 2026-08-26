@@ -227,6 +227,19 @@ export async function updateProjectSettings(projectId: string, formData: FormDat
   revalidatePath(`/dashboard/projects`);
 }
 
+export async function updateProjectVisibility(projectId: string, formData: FormData) {
+  const session = await requireSession();
+  if (!hasProjectRole(session.user.id, projectId, "editor", session.user.isOrgAdmin)) {
+    throw new Error("You don't have permission to edit this project.");
+  }
+
+  const noindex = formData.get("noindex") === "on";
+  const failOnBrokenLinks = formData.get("failOnBrokenLinks") === "on";
+
+  db.update(schema.projects).set({ noindex, failOnBrokenLinks }).where(eq(schema.projects.id, projectId)).run();
+  revalidatePath(`/dashboard/projects`);
+}
+
 export async function renameProject(projectId: string, formData: FormData) {
   const session = await requireSession();
   if (!hasProjectRole(session.user.id, projectId, "owner", session.user.isOrgAdmin)) {

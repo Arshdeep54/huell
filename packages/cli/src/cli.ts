@@ -22,6 +22,7 @@ program
   .command("validate")
   .description("Check a docs/ folder for errors before publishing")
   .argument("[dir]", "docs folder to validate", "docs")
+  .option("--strict", "exit non-zero on warnings too, not just errors (e.g. a broken internal link)")
   .action(runValidate);
 
 program

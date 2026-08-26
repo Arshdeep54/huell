@@ -127,14 +127,31 @@ async function processBuild(build: typeof schema.builds.$inferSelect) {
     // node_modules co-located with the project root it belongs to — a copy +
     // symlinked node_modules elsewhere breaks Vite's module resolution once
     // DATA_DIR lives on a different path than the code (as it does in Docker).
-    const { warnings } = migrateDocs({
+    const { warnings, linkErrors } = migrateDocs({
       sourceDocsDir,
       destSiteDir: templateDir,
       siteUrl: `https://${project.slug}${docsSubdomainSeparator}docs.${orgDomain}`,
       projectName: project.name,
+      noindex: project.noindex,
     });
     logger.append("docs.json → starlight nav config");
     for (const warning of warnings) logger.append(`warning: ${warning}`);
+
+    // Links to a local address (e.g. left over from copy-pasting a preview
+    // URL) can never resolve for a real reader in any environment, so they
+    // block the build unconditionally — unlike a plain broken internal link,
+    // which is only fatal if the project has opted into that via failOnBrokenLinks.
+    if (linkErrors.length > 0) {
+      for (const error of linkErrors) logger.append(`error: ${error}`);
+      failBuild(build.id, logger.text);
+      return;
+    }
+    const brokenLinkWarnings = warnings.filter((w) => w.startsWith("broken link:"));
+    if (project.failOnBrokenLinks && brokenLinkWarnings.length > 0) {
+      logger.append(`build failed: ${brokenLinkWarnings.length} broken link(s), and this project fails builds on broken links`);
+      failBuild(build.id, logger.text);
+      return;
+    }
 
     rmSync(path.join(templateDir, "dist"), { recursive: true, force: true });
     await runQuietly(path.join(templateDir, "node_modules", ".bin", "astro"), ["build"], templateDir, ASTRO_BUILD_TIMEOUT_MS);

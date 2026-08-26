@@ -59,6 +59,10 @@ Because every project lives under the same suffix (`*.docs.<ORG_DOMAIN>`), a sin
   This assumes the default `<slug>.docs.<ORG_DOMAIN>` pattern. On a [tunnel deployment](/guides/tunnel-deployment) without wildcard certificate coverage, `DOCS_SUBDOMAIN_SEPARATOR=-` switches every project to `<slug>-docs.<ORG_DOMAIN>` instead — and that pattern can't be wildcarded at all (a wildcard can only ever match one whole label), so each project needs its own exact DNS route.
 </Warning>
 
+<Note>
+  A project can also be served on a custom domain instead of `<slug>.docs.<ORG_DOMAIN>` — an admin adds it directly to Caddy's config on the server. This isn't self-service from the dashboard yet, so it's a manual, per-server step rather than something documented as a repeatable guide here.
+</Note>
+
 ## Data
 
 <Steps>

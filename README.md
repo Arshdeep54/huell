@@ -38,7 +38,7 @@ Four pieces, one Docker Compose file: a Caddy reverse proxy, the Next.js dashboa
 Requirements: a Linux server, Docker + the Docker Compose plugin, a domain with DNS you control.
 
 ```bash
-git clone <this-repo> huell && cd huell
+git clone https://github.com/Arshdeep54/huell.git && cd huell
 ./setup.sh
 ```
 

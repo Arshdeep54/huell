@@ -1,24 +1,43 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { migrateDocs } from "@huell/docs-core";
+import { copyDir, migrateDocs } from "@huell/docs-core";
 
-// Resolves the docs-site template this CLI ships against. Inside this
-// monorepo (dev, or `pnpm --filter huellup dev`) that's the real
-// templates/docs-site workspace package, already `pnpm install`-ed.
-//
-// TODO(publish): a standalone `npm install -g huellup` doesn't have this
-// monorepo around it — before actually publishing, bundle a copy of
-// templates/docs-site into this package's own `files` and point this at that
-// bundled copy instead. Nothing else in this command needs to change.
-function resolveTemplateDir(): string {
+// Resolves where to run `astro dev` from, and which astro binary to use.
+// Two cases:
+//  - Inside this monorepo (dev, or `pnpm --filter huellup dev`): run
+//    directly against the real templates/docs-site workspace package,
+//    already `pnpm install`-ed — no copying needed.
+//  - A standalone install (`npm install -g huellup`, `npx huellup`): the
+//    template ships bundled inside this package (see
+//    scripts/bundle-template.mjs), and astro/starlight are real
+//    dependencies of huellup itself. Copy the bundled template into a work
+//    directory nested under this package's own install root — Node
+//    resolves astro.config.mjs's imports by walking up parent directories
+//    for node_modules, so nesting under huellup's own root means it finds
+//    huellup's own node_modules with no NODE_PATH tricks needed.
+function resolvePreviewEnvironment(): { templateDir: string; astroBin: string } {
   const monorepoTemplate = fileURLToPath(new URL("../../../../templates/docs-site", import.meta.url));
-  if (existsSync(path.join(monorepoTemplate, "package.json"))) return monorepoTemplate;
-  throw new Error(
-    "Could not find the docs-site template. This build of huellup doesn't yet bundle it standalone — " +
-      "run it from within the Huell monorepo (pnpm --filter huellup dev preview) for now.",
-  );
+  if (existsSync(path.join(monorepoTemplate, "package.json"))) {
+    return { templateDir: monorepoTemplate, astroBin: path.join(monorepoTemplate, "node_modules", ".bin", "astro") };
+  }
+
+  const packageRoot = fileURLToPath(new URL("..", import.meta.url)); // dist/../ -> package root
+  const bundledTemplate = path.join(packageRoot, "docs-site-template");
+  if (!existsSync(bundledTemplate)) {
+    throw new Error("Could not find huellup's bundled docs-site template. This install may be corrupted — try reinstalling huellup.");
+  }
+
+  const workDir = path.join(packageRoot, ".preview-workdir");
+  rmSync(workDir, { recursive: true, force: true });
+  copyDir(bundledTemplate, workDir);
+
+  const astroBin = path.join(packageRoot, "node_modules", ".bin", "astro");
+  if (!existsSync(astroBin)) {
+    throw new Error("Could not find astro in huellup's own dependencies. Try reinstalling huellup.");
+  }
+  return { templateDir: workDir, astroBin };
 }
 
 export function runPreview(targetDir: string) {
@@ -29,7 +48,7 @@ export function runPreview(targetDir: string) {
     return;
   }
 
-  const templateDir = resolveTemplateDir();
+  const { templateDir, astroBin } = resolvePreviewEnvironment();
 
   console.log(`Migrating ${docsDir} into the preview site...`);
   const { warnings } = migrateDocs({
@@ -41,7 +60,6 @@ export function runPreview(targetDir: string) {
   for (const warning of warnings) console.log(`  warning: ${warning}`);
 
   console.log("Starting the preview server (hot-reloading — edit your .mdx and it updates live)...\n");
-  const astroBin = path.join(templateDir, "node_modules", ".bin", "astro");
   const child = spawn(astroBin, ["dev"], { cwd: templateDir, stdio: "inherit" });
   child.on("exit", (code) => {
     process.exitCode = code ?? 0;

@@ -8,8 +8,14 @@ import type { HuellNavTab } from "./migrate-docs";
 const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|::1)(:\d+)?$/i;
 
 // Markdown links `[text](url)` and JSX `href="url"` — covers both prose
-// links and component props like <Card href="...">.
+// links and component props like <Card href="...">. This also matches
+// markdown image embeds (`![alt](url)`), which point at a static asset
+// copied into public/, not a docs.json page — those get filtered out below
+// by extension rather than excluded here, since a real page link and an
+// image embed are otherwise indistinguishable by this regex.
 const LINK_PATTERNS = [/\[[^\]]*\]\(([^)\s]+)\)/g, /href=["']([^"']+)["']/g];
+
+const STATIC_ASSET_EXTENSIONS = /\.(png|jpe?g|gif|svg|webp|avif|ico|pdf|mp4|webm|woff2?)$/i;
 
 function extractLinks(content: string): string[] {
   const links: string[] = [];
@@ -41,6 +47,7 @@ export function checkLinks(
 
         for (const rawLink of extractLinks(content)) {
           if (rawLink.startsWith("#") || rawLink.startsWith("mailto:") || rawLink.startsWith("tel:")) continue;
+          if (STATIC_ASSET_EXTENSIONS.test(rawLink.split(/[?#]/)[0])) continue;
 
           let hostname: string | null = null;
           if (/^https?:\/\//i.test(rawLink)) {

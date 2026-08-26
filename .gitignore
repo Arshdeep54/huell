@@ -12,6 +12,8 @@ dist/
 .astro/
 apps/web/.next/
 *.tsbuildinfo
+packages/cli/docs-site-template/
+packages/cli/.preview-workdir/
 
 # runtime data (sqlite db, per-project build output, github private keys)
 data/

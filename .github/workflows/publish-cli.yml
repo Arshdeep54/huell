@@ -1,0 +1,49 @@
+name: Publish huellup
+
+on:
+  push:
+    tags:
+      - "huellup-v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#huellup-v}"
+          PKG_VERSION=$(node -p "require('./packages/cli/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match packages/cli/package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - run: pnpm --filter huellup build
+
+      # Authenticates via OIDC trusted publishing (configured on npmjs.com
+      # for this exact repo + workflow filename) — no stored token needed.
+      # Requires npm >=11.5.1 (added OIDC support); pinned to the 11.x line
+      # rather than "latest" since npm 12 requires Node >=22, newer than
+      # the Node 20 pinned above.
+      - run: npm install -g npm@11
+
+      # No --provenance: it requires a public source repo to verify
+      # against, and this repo is currently private. Add it back once the
+      # repo goes public.
+      - run: npm publish --access public
+        working-directory: packages/cli

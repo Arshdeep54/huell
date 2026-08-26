@@ -40,6 +40,13 @@ export const projects = sqliteTable("projects", {
   repoFullName: text("repo_full_name"),
   branch: text("branch").notNull().default("main"),
   docsPath: text("docs_path").notNull().default("docs"),
+  // Ask search engines not to index this project's docs (noindex meta tag +
+  // a disallow-all robots.txt) while keeping the site itself publicly reachable.
+  noindex: integer("noindex", { mode: "boolean" }).notNull().default(false),
+  // Escalate the build's broken-internal-link warnings into a build failure.
+  // Off by default — a plain broken link is often a work-in-progress page,
+  // not something that should block a deploy on its own.
+  failOnBrokenLinks: integer("fail_on_broken_links", { mode: "boolean" }).notNull().default(false),
   createdBy: text("created_by").notNull().references(() => members.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });

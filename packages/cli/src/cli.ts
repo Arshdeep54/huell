@@ -1,16 +1,19 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { runInit } from "./commands/init";
 import { runValidate } from "./commands/validate";
 import { runPreview } from "./commands/preview";
 import { runMcp } from "./commands/mcp";
 
+const { version } = createRequire(import.meta.url)("../package.json");
+
 const program = new Command();
 
 program
   .name("huellup")
   .description("Author, validate, and preview Huell-format docs (docs.json + .mdx)")
-  .version("0.1.0");
+  .version(version);
 
 program
   .command("init")
@@ -22,6 +25,7 @@ program
   .command("validate")
   .description("Check a docs/ folder for errors before publishing")
   .argument("[dir]", "docs folder to validate", "docs")
+  .option("--strict", "exit non-zero on warnings too, not just errors (e.g. a broken internal link)")
   .action(runValidate);
 
 program

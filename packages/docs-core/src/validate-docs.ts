@@ -18,12 +18,15 @@ export function validateDocs(sourceDocsDir: string): { valid: boolean; errors: s
 
   const scratchDir = mkdtempSync(path.join(tmpdir(), "huellup-validate-"));
   try {
-    const { warnings } = migrateDocs({
+    const { warnings, linkErrors } = migrateDocs({
       sourceDocsDir,
       destSiteDir: scratchDir,
       siteUrl: "http://localhost:4321",
       projectName: "validation",
     });
+    if (linkErrors.length > 0) {
+      return { valid: false, errors: [...errors, ...linkErrors], warnings };
+    }
     return { valid: true, errors, warnings };
   } catch (error) {
     errors.push(error instanceof Error ? error.message : String(error));

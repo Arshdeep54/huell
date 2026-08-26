@@ -34,9 +34,9 @@ description: Author and validate docs locally, and let AI coding agents write th
   npx huellup preview ./docs
   ```
 
-  <Warning>
-    Preview currently only works run from inside the Huell monorepo (it borrows the real `templates/docs-site` template directly) — it isn't yet bundled standalone for a plain `npm install -g huellup` outside the repo.
-  </Warning>
+  <Tip>
+    `preview` ships its own bundled copy of the docs-site template — a plain `npm install -g huellup` (or `npx huellup preview`) works standalone, with no Huell repo clone required.
+  </Tip>
 </ResponseField>
 
 <ResponseField name="huellup mcp" type="command">

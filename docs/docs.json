@@ -1,5 +1,14 @@
 {
   "name": "Huell",
+  "colors": {
+    "primary": "#E8A855"
+  },
+  "background": {
+    "color": {
+      "dark": "#0b0d10"
+    }
+  },
+  "favicon": "favicon.svg",
   "navigation": {
     "groups": [
       {

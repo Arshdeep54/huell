@@ -9,6 +9,7 @@
     "dev:web": "pnpm --filter @huell/web dev",
     "build:web": "pnpm --filter @huell/web build",
     "db:migrate": "pnpm --filter @huell/db migrate",
-    "worker": "pnpm --filter @huell/builder start"
+    "worker": "pnpm --filter @huell/builder start",
+    "typecheck": "pnpm -r --if-present run typecheck"
   }
 }

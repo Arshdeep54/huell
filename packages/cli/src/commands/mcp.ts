@@ -13,6 +13,8 @@ const DOCS_JSON_SCHEMA_DESCRIPTION = {
     "colors.primary": "optional hex color string, used as the site's accent color.",
     logo: "optional — either a single path string (e.g. \"/logo/mark.svg\"), or {light, dark} for theme-specific variants. Shown top-left on every page. The referenced file must live under an images/, logo/, or assets/ folder (or loose at the docs root) alongside docs.json — those are the only paths copied into the built site.",
     favicon: "optional path string (e.g. \"/favicon.svg\"), shown as the browser tab icon. Same file-location rule as logo. Defaults to /favicon.svg if a file with that exact name exists at the docs root, even with this field unset.",
+    og:
+      "optional object for social link previews (Open Graph / Twitter cards). Fields: title (defaults to name), description (≤160 chars; defaults to intro page excerpt or \"Documentation for {name}\"), image (.png/.jpg path relative to docs root; copied to /og-image.png at build — defaults to logo.light, favicon, or /favicon.svg), url (defaults to deployed site URL).",
     "navbar.links": "optional array of {label, href} shown in the top nav.",
     "navbar.primary": "optional single {label, href} shown as the primary/highlighted nav button.",
   },

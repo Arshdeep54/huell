@@ -1,7 +1,8 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { migrateDocs } from "./migrate-docs";
+import { validateOgConfig, type DocsJsonWithOg } from "./validate-og";
 
 // Runs the exact same migration the builder and `preview` use, into a
 // throwaway directory, so "is this docs/ folder valid" always means the same
@@ -14,6 +15,12 @@ export function validateDocs(sourceDocsDir: string): { valid: boolean; errors: s
   }
   if (!existsSync(path.join(sourceDocsDir, "docs.json"))) {
     return { valid: false, errors: [`No docs.json found in ${sourceDocsDir}`], warnings: [] };
+  }
+
+  const docsJson = JSON.parse(readFileSync(path.join(sourceDocsDir, "docs.json"), "utf-8")) as DocsJsonWithOg;
+  const ogErrors = validateOgConfig(docsJson);
+  if (ogErrors.length > 0) {
+    return { valid: false, errors: ogErrors, warnings: [] };
   }
 
   const scratchDir = mkdtempSync(path.join(tmpdir(), "huellup-validate-"));

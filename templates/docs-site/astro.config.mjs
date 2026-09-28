@@ -40,12 +40,9 @@ const backgroundOverrideCss = [
 		: '',
 ].join('\n');
 
-const firstPage = nav.tabs[0]?.groups[0]?.pages[0];
-
 // https://astro.build/config
 export default defineConfig({
 	site: nav.siteUrl,
-	redirects: firstPage ? { '/': `/${firstPage}` } : {},
 	markdown: {
 		remarkPlugins: [remarkMath],
 		rehypePlugins: [rehypeKatex],

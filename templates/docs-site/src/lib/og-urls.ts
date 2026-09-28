@@ -1,8 +1,12 @@
-/** Absolute OG image URL for the host that served the page (custom domain or *.docs.*). */
-export function absoluteOgImage(image: string | undefined, origin: string, fallback = '/favicon.svg'): string {
-	if (!image) return new URL(fallback, origin).toString();
+/** Root-relative OG image path so *.docs.* and custom-domain aliases resolve the same file. */
+export function ogImagePath(image: string | undefined, fallback = '/favicon.svg'): string {
+	if (!image) return fallback;
 	if (image.startsWith('http')) {
-		return new URL(new URL(image).pathname, origin).toString();
+		try {
+			return new URL(image).pathname;
+		} catch {
+			return fallback;
+		}
 	}
-	return new URL(image, origin).toString();
+	return image.startsWith('/') ? image : `/${image}`;
 }

@@ -1,11 +1,10 @@
 ---
 import Default from '@astrojs/starlight/components/Head.astro';
 import ogMetadata from '../og-metadata.json';
-import { absoluteOgImage } from '../lib/og-urls';
+import { ogImagePath } from '../lib/og-urls';
 
-const origin = Astro.url.origin;
-const ogImage = absoluteOgImage(ogMetadata.image, origin);
-const ogUrl = new URL(Astro.url.pathname, origin).href;
+const ogImage = ogImagePath(ogMetadata.image);
+const ogUrl = Astro.url.pathname;
 ---
 
 <meta property="og:type" content="website" />

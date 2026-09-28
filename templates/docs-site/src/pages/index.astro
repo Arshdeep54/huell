@@ -1,11 +1,13 @@
 ---
 import nav from '../../nav.config.json';
 import ogMetadata from '../og-metadata.json';
-import { ogImagePath } from '../lib/og-urls';
+import { absoluteOgAssetUrl, absolutePageUrl } from '../lib/og-urls';
 
 const firstPage = nav.tabs[0]?.groups[0]?.pages[0];
 const target = firstPage ? `/${firstPage}` : '/';
-const ogImage = ogImagePath(ogMetadata.image);
+const siteUrl = ogMetadata.url;
+const ogImage = absoluteOgAssetUrl(ogMetadata.image, siteUrl);
+const ogUrl = absolutePageUrl('/', siteUrl);
 ---
 
 <!doctype html>
@@ -18,7 +20,7 @@ const ogImage = ogImagePath(ogMetadata.image);
 		<meta property="og:title" content={ogMetadata.title} />
 		<meta property="og:description" content={ogMetadata.description} />
 		<meta property="og:image" content={ogImage} />
-		<meta property="og:url" content="/" />
+		<meta property="og:url" content={ogUrl} />
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:title" content={ogMetadata.title} />
 		<meta name="twitter:description" content={ogMetadata.description} />

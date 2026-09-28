@@ -1,6 +1,23 @@
 ---
 import Default from '@astrojs/starlight/components/Head.astro';
+import ogMetadata from '../og-metadata.json';
+
+const ogImage = ogMetadata.image
+	? ogMetadata.image.startsWith('http')
+		? ogMetadata.image
+		: new URL(ogMetadata.image, ogMetadata.url).toString()
+	: new URL('/favicon.svg', ogMetadata.url).toString();
 ---
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content={ogMetadata.title} />
+<meta property="og:description" content={ogMetadata.description} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:url" content={ogMetadata.url} />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={ogMetadata.title} />
+<meta name="twitter:description" content={ogMetadata.description} />
+<meta name="twitter:image" content={ogImage} />
 
 <Default><slot /></Default>
 

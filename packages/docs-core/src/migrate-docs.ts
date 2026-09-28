@@ -21,6 +21,20 @@ export interface HuellNavLink {
 
 export type HuellLogo = string | { light: string; dark: string };
 
+export interface OgMetadata {
+  title: string;
+  description: string;
+  image?: string;
+  url: string;
+}
+
+export interface OgConfig {
+  title?: string;
+  description?: string;
+  image?: string;
+  url?: string;
+}
+
 export interface HuellNav {
   name: string;
   siteUrl: string;
@@ -50,6 +64,7 @@ interface SourceDocsJson {
   background?: { color?: { light?: string; dark?: string } };
   logo?: HuellLogo;
   favicon?: string;
+  og?: OgConfig;
   navbar?: {
     links?: { label: string; href: string }[];
     primary?: { label: string; href: string };
@@ -162,6 +177,94 @@ function copyStaticAssets(sourceDocsDir: string, publicDir: string, warnings: st
   }
 }
 
+function toPublicUrlPath(assetPath: string): string {
+  const normalized = assetPath.replace(/^\.\//, "").replace(/^\//, "");
+  return `/${normalized}`;
+}
+
+function stripMarkdownForDescription(text: string): string {
+  return text
+    .replace(/^---[\s\S]*?---\n?/, "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]+`/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/[#>*_~-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function introDescription(sourceDocsDir: string, tabs: HuellNavTab[], warnings: string[]): string | undefined {
+  const candidates = ["introduction", tabs[0]?.groups[0]?.pages[0]].filter(Boolean) as string[];
+  for (const page of candidates) {
+    const sourceFile = findSourceFile(sourceDocsDir, page);
+    if (!sourceFile) continue;
+    const parsed = matter(readFileSync(sourceFile, "utf-8"));
+    const fromFrontmatter =
+      typeof parsed.data.description === "string" ? parsed.data.description.trim() : undefined;
+    const raw = fromFrontmatter || stripMarkdownForDescription(parsed.content);
+    if (!raw) continue;
+    if (raw.length > 160) {
+      warnings.push(`Intro description for OG is ${raw.length} chars — truncating to 160.`);
+    }
+    return raw.slice(0, 160);
+  }
+  return undefined;
+}
+
+function resolveOgImagePath(
+  sourceDocsDir: string,
+  destSiteDir: string,
+  docsJson: SourceDocsJson,
+  warnings: string[],
+): string | undefined {
+  if (docsJson.og?.image) {
+    const sourceFile = path.join(sourceDocsDir, docsJson.og.image.replace(/^\//, ""));
+    if (!existsSync(sourceFile)) {
+      warnings.push(`og.image file "${docsJson.og.image}" not found — OG image skipped.`);
+      return undefined;
+    }
+    const destFile = path.join(destSiteDir, "public", "og-image.png");
+    mkdirSync(path.dirname(destFile), { recursive: true });
+    writeFileSync(destFile, readFileSync(sourceFile));
+    return "/og-image.png";
+  }
+
+  if (typeof docsJson.logo === "string") {
+    return toPublicUrlPath(docsJson.logo);
+  }
+  if (docsJson.logo?.light) {
+    return toPublicUrlPath(docsJson.logo.light);
+  }
+  if (docsJson.favicon) {
+    return toPublicUrlPath(docsJson.favicon);
+  }
+  return "/favicon.svg";
+}
+
+function buildOgMetadata(
+  sourceDocsDir: string,
+  destSiteDir: string,
+  docsJson: SourceDocsJson,
+  tabs: HuellNavTab[],
+  siteUrl: string,
+  projectName: string,
+  warnings: string[],
+): OgMetadata {
+  const siteName = docsJson.name ?? projectName;
+  const description =
+    docsJson.og?.description?.trim() ||
+    introDescription(sourceDocsDir, tabs, warnings) ||
+    `Documentation for ${siteName}`;
+
+  return {
+    title: docsJson.og?.title?.trim() || siteName,
+    description: description.slice(0, 160),
+    image: resolveOgImagePath(sourceDocsDir, destSiteDir, docsJson, warnings),
+    url: docsJson.og?.url?.trim() || siteUrl,
+  };
+}
+
 function copyRecursive(source: string, dest: string, warnings: string[]) {
   const stat = statSync(source);
   if (stat.isDirectory()) {
@@ -187,7 +290,7 @@ export function migrateDocs(options: {
   siteUrl: string;
   projectName: string;
   noindex?: boolean;
-}): { warnings: string[]; linkErrors: string[] } {
+}): { warnings: string[]; linkErrors: string[]; ogMetadata: OgMetadata } {
   const { sourceDocsDir, destSiteDir, siteUrl, projectName, noindex = false } = options;
   const warnings: string[] = [];
 
@@ -261,6 +364,13 @@ export function migrateDocs(options: {
   }
 
   copyStaticAssets(sourceDocsDir, path.join(destSiteDir, "public"), warnings);
+
+  const ogMetadata = buildOgMetadata(sourceDocsDir, destSiteDir, docsJson, tabs, siteUrl, projectName, warnings);
+  writeFileSync(
+    path.join(destSiteDir, "src", "og-metadata.json"),
+    JSON.stringify(ogMetadata, null, 2) + "\n",
+  );
+
   writeFileSync(path.join(destSiteDir, "nav.config.json"), JSON.stringify(nav, null, 2));
 
   // public/ persists across builds (only contentDir above is wiped), so this
@@ -273,5 +383,5 @@ export function migrateDocs(options: {
   const { warnings: linkWarnings, errors: linkErrors } = checkLinks(sourceDocsDir, tabs, findSourceFile);
   warnings.push(...linkWarnings);
 
-  return { warnings, linkErrors };
+  return { warnings, linkErrors, ogMetadata };
 }
